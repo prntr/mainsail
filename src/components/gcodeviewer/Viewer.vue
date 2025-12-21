@@ -193,6 +193,13 @@
                                                 hide-details
                                                 :label="$t('GCodeViewer.CNCMode')" />
                                         </v-list-item>
+                                        <v-list-item class="minHeight36">
+                                            <v-checkbox
+                                                v-model="embroideryMode"
+                                                class="mt-0"
+                                                hide-details
+                                                :label="$t('GCodeViewer.EmbroideryMode')" />
+                                        </v-list-item>
                                     </v-list>
                                 </v-menu>
                             </v-col>
@@ -598,7 +605,11 @@ export default class Viewer extends Mixins(BaseMixin) {
             if (typeof blob === 'string') {
                 this.fileSize = blob.length
                 // Do something with result
-                await viewer.processFile(blob)
+                let processedBlob = blob
+                if (this.embroideryMode) {
+                    processedBlob = this.preprocessEmbroideryGCode(blob)
+                }
+                await viewer.processFile(processedBlob)
                 this.fileData = viewer.fileData
             }
             this.finishLoad()
@@ -636,7 +647,11 @@ export default class Viewer extends Mixins(BaseMixin) {
         this.loadedFile = this.downloadSnackbar.filename
 
         viewer.updateRenderQuality(this.renderQuality.value)
-        await viewer.processFile(text)
+        let processedText = text
+        if (this.embroideryMode) {
+            processedText = this.preprocessEmbroideryGCode(text)
+        }
+        await viewer.processFile(processedText)
         this.fileData = viewer.fileData
         this.loadingPercent = 100
         this.finishLoad()
@@ -900,6 +915,53 @@ export default class Viewer extends Mixins(BaseMixin) {
         viewer.gcodeProcessor.g1AsExtrusion = newVal
         viewer.gcodeProcessor.updateForceWireMode(this.forceLineRendering || newVal)
         this.reloadViewer()
+    }
+
+    get embroideryMode() {
+        return this.$store.state.gui.gcodeViewer.embroideryMode ?? false
+    }
+
+    set embroideryMode(newVal) {
+        this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.embroideryMode', value: newVal })
+        if (viewer) {
+            // In embroidery mode, flatten Z to XY plane
+            // Z movements represent stitches, not height
+            if (newVal) {
+                viewer.gcodeProcessor.g1AsExtrusion = true
+                viewer.gcodeProcessor.updateForceWireMode(true)
+            } else {
+                // Restore normal 3D view
+                viewer.gcodeProcessor.g1AsExtrusion = this.cncMode
+                viewer.gcodeProcessor.updateForceWireMode(this.forceLineRendering || this.cncMode)
+            }
+            this.reloadViewer()
+        }
+    }
+
+    /**
+     * Preprocess embroidery G-code to flatten Z movements to XY plane
+     * In embroidery, Z represents stitch count, not height
+     * Also adds E parameter to mark stitch locations
+     */
+    preprocessEmbroideryGCode(gcode: string): string {
+        const lines = gcode.split('\n')
+        let stitchCount = 0
+        const processedLines = lines.map((line) => {
+            // Match G-code commands that contain Z parameter
+            if (/^G[01]\s/i.test(line) && /\sZ[\d.-]+/i.test(line)) {
+                stitchCount++
+                // Replace Z parameter with Z0 and add a small E value to mark the stitch
+                // This creates a visible "extrusion" point at each stitch location
+                const withoutZ = line.replace(/\sZ[\d.-]+/gi, ' Z0')
+                // Add E parameter to create a dot (0.01mm extrusion)
+                if (!withoutZ.includes(' E')) {
+                    return withoutZ + ' E' + (stitchCount * 0.01).toFixed(4)
+                }
+                return withoutZ
+            }
+            return line
+        })
+        return processedLines.join('\n')
     }
 
     get extruderColors() {

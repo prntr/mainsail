@@ -302,6 +302,7 @@
         "CNCMode": "CNC Mode",
         "ColorMode": "Color Mode",
         "Downloading": "Downloading",
+        "EmbroideryMode": "Embroidery Mode",
         "ForceLineRendering": "Force Line Rendering",
         "HDRendering": "HD Rendering (Round Extrusions)",
         "High": "High",
@@ -1085,6 +1086,21 @@
             "SaveInfoDescription": "The new Z-Offset has been calculated and registered. Click on \"SAVE CONFIG\" to save it to the printer.cfg and restart Klipper.",
             "SaveInfoDescriptionPrint": "The new Z-Offset has been calculated and registered. After printing, click on \"SAVE CONFIG\" in the top bar to save it to the printer.cfg and restart Klipper.",
             "SaveInfoHeadline": "Information"
+        },
+        "EmbroideryPanel": {
+            "Headline": "Needle Control",
+            "CurrentPosition": "Current Needle Position",
+            "Stitches": "stitches",
+            "NeedleUp": "Needle Up",
+            "NeedleDown": "Needle Down",
+            "NeedleBetween": "Needle Between",
+            "Stitch": "Stitch",
+            "LockStitch": "Lock Stitch",
+            "ZeroPosition": "Zero Needle Position",
+            "LastPosition": "Last position before move",
+            "StitchLength": "Stitch Length",
+            "StitchCount": "Stitch Count",
+            "TotalStitches": "Total Stitches"
         }
     },
     "PowerDeviceChangeDialog": {

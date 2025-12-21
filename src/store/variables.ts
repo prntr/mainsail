@@ -99,6 +99,7 @@ export const maxGcodeHistory = 50
  */
 export const allDashboardPanels = [
     'afc',
+    'embroidery-control',
     'toolhead-control',
     'extruder-control',
     'macros',
