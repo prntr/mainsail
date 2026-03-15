@@ -72,7 +72,15 @@ export default class CodeStream extends Vue {
 
 <style scoped>
 /deep/ .cm-activeLine {
-    background-color: #333 !important;
+    background-color: rgba(80, 120, 160, 0.25) !important;
+}
+
+/deep/ .cm-activeLineGutter {
+    background-color: rgba(80, 120, 160, 0.25) !important;
+}
+
+/deep/ .cm-selectionBackground {
+    background-color: rgba(255, 255, 255, 0.22) !important;
 }
 
 .codeview {

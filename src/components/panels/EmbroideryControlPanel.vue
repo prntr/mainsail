@@ -5,20 +5,11 @@
         :title="$t('Panels.EmbroideryPanel.Headline')"
         card-class="embroidery-control-panel">
         <v-card-text>
-            <!-- Current Needle Position Display -->
+            <!-- Needle State Display -->
             <div class="text-center mb-4">
-                <div class="text-h6">
-                    {{ $t('Panels.EmbroideryPanel.CurrentPosition') }}:
-                    <strong>{{ currentZPosition.toFixed(2) }}mm</strong>
-                </div>
-                <div class="mb-2">
-                    <v-chip small :color="needleStateColor" dark>
-                        {{ needleState }}
-                    </v-chip>
-                </div>
-                <div class="text-caption grey--text">
-                    ({{ stitchCount }} {{ $t('Panels.EmbroideryPanel.Stitches') }})
-                </div>
+                <v-chip :color="physicalStateColor" dark>
+                    {{ physicalStateText }}
+                </v-chip>
             </div>
 
             <!-- Needle Toggle & Stitch Buttons -->
@@ -27,7 +18,7 @@
                     <v-btn
                         block
                         large
-                        :color="needleStateColor"
+                        :color="toggleButtonColor"
                         :disabled="!canMoveNeedle"
                         :loading="loadings.includes('needleToggle')"
                         @click="toggleNeedle">
@@ -82,16 +73,12 @@
                 {{ $t('Panels.EmbroideryPanel.ZeroPosition') }}
             </v-btn>
 
-            <!-- Last Position Info -->
-            <div v-if="lastPositionBeforeMove !== null" class="text-caption text-center mt-3 grey--text">
-                {{ $t('Panels.EmbroideryPanel.LastPosition') }}: {{ lastPositionBeforeMove.toFixed(2) }}mm
-            </div>
         </v-card-text>
     </panel>
 </template>
 
 <script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
+import { Component, Mixins, Watch } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import ControlMixin from '@/components/mixins/control'
 import Panel from '@/components/ui/Panel.vue'
@@ -107,63 +94,69 @@ export default class EmbroideryControlPanel extends Mixins(BaseMixin, ControlMix
     mdiTarget = mdiTarget
     mdiLock = mdiLock
 
-    lastPositionBeforeMove: number | null = null
+    /**
+     * Track physical needle position (independent of logical Z position)
+     * This is needed because NEEDLE_TOGGLE uses G92 to restore Z position
+     * after physical movement, so the frontend can't detect the change.
+     */
+    isPhysicallyDown: boolean = false
 
     /**
-     * Get current Z position from printer state
+     * Get physical Z position from toolhead (actual motor position)
      */
-    get currentZPosition(): number {
+    get physicalZPosition(): number {
         return this.$store.state.printer.toolhead?.position[2] ?? 0
     }
 
     /**
-     * Calculate stitch count based on Z position
-     * 5mm = 1 complete stitch (full rotation)
+     * Watch physical Z position - when it returns to 0 (after homing),
+     * reset the isPhysicallyDown state to match actual needle position
      */
-    get stitchCount(): number {
-        return Math.floor(this.currentZPosition / 5)
-    }
-
-    /**
-     * Determine if needle is UP, DOWN, or BETWEEN
-     */
-    get needleState(): string {
-        const zMod = this.currentZPosition % 5.0
-        if (zMod < 0.5 || zMod > 4.5) {
-            return 'UP (0°)'
-        } else if (zMod > 1.5 && zMod < 3.5) {
-            return 'DOWN (180°)'
-        } else {
-            return 'BETWEEN'
+    @Watch('physicalZPosition')
+    onPhysicalZPositionChanged(newVal: number): void {
+        // After homing, physical Z is 0 and needle is UP
+        // Use a small threshold to account for floating point
+        if (Math.abs(newVal) < 0.1) {
+            this.isPhysicallyDown = false
         }
     }
 
     /**
-     * Color for needle state indicator
-     */
-    get needleStateColor(): string {
-        const zMod = this.currentZPosition % 5.0
-        if (zMod < 0.5 || zMod > 4.5) {
-            return 'success' // Green for UP
-        } else if (zMod > 1.5 && zMod < 3.5) {
-            return 'warning' // Orange for DOWN
-        } else {
-            return 'grey' // Grey for BETWEEN
-        }
-    }
-
-    /**
-     * Dynamic text for toggle button - shows current needle state
+     * Dynamic text for toggle button - shows the ACTION that will be performed
+     * Based on physical state (not logical Z position)
      */
     get toggleButtonText(): string {
-        const zMod = this.currentZPosition % 5.0
-        if (zMod < 0.5 || zMod > 4.5) {
-            return this.$t('Panels.EmbroideryPanel.NeedleUp') as string
-        } else if (zMod > 1.5 && zMod < 3.5) {
-            return this.$t('Panels.EmbroideryPanel.NeedleDown') as string
+        if (this.isPhysicallyDown) {
+            return this.$t('Panels.EmbroideryPanel.ToggleToUp') as string
         } else {
-            return this.$t('Panels.EmbroideryPanel.NeedleBetween') as string
+            return this.$t('Panels.EmbroideryPanel.ToggleToDown') as string
         }
+    }
+
+    /**
+     * Button color based on physical needle state
+     */
+    get toggleButtonColor(): string {
+        return this.isPhysicallyDown ? 'warning' : 'success'
+    }
+
+    /**
+     * Physical state text for display - shows actual needle position
+     * Format: "UP (0°)" or "DOWN (180°)"
+     */
+    get physicalStateText(): string {
+        if (this.isPhysicallyDown) {
+            return 'DOWN (180°)'
+        } else {
+            return 'UP (0°)'
+        }
+    }
+
+    /**
+     * Physical state color for chip display
+     */
+    get physicalStateColor(): string {
+        return this.isPhysicallyDown ? 'warning' : 'success'
     }
 
     /**
@@ -175,19 +168,21 @@ export default class EmbroideryControlPanel extends Mixins(BaseMixin, ControlMix
 
     /**
      * Toggle needle by moving 2.5mm (half rotation) for manual control
+     * The macro uses G92 to restore Z position, so we track physical state locally
      */
     toggleNeedle(): void {
         const gcode = 'NEEDLE_TOGGLE'
         this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
         this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'needleToggle' })
+
+        // Toggle physical state locally (since G92 hides the actual movement)
+        this.isPhysicallyDown = !this.isPhysicallyDown
     }
 
     /**
-     * Advance one complete stitch (5mm Z movement)
+     * Perform one complete stitch cycle (DOWN → UP) without changing logical Z
      */
     makeStitch(): void {
-        this.lastPositionBeforeMove = this.currentZPosition
-
         const gcode = 'STITCH'
         this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
         this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'stitch' })
@@ -197,8 +192,6 @@ export default class EmbroideryControlPanel extends Mixins(BaseMixin, ControlMix
      * Perform lock stitch - 3 rapid stitches in place to secure thread
      */
     makeLockStitch(): void {
-        this.lastPositionBeforeMove = this.currentZPosition
-
         const gcode = 'LOCK_STITCH'
         this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
         this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'lockStitch' })
@@ -213,8 +206,8 @@ export default class EmbroideryControlPanel extends Mixins(BaseMixin, ControlMix
         this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
         this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'zeroNeedle' })
 
-        // Reset last position tracker
-        this.lastPositionBeforeMove = null
+        // Reset physical state - after zero, needle is assumed to be at UP
+        this.isPhysicallyDown = false
     }
 }
 </script>

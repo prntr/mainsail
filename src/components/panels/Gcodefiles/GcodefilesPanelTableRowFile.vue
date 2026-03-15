@@ -82,6 +82,10 @@
                     <v-icon class="mr-1">{{ mdiVideo3d }}</v-icon>
                     {{ $t('Files.View3D') }}
                 </v-list-item>
+                <v-list-item :disabled="!isGcodeFile" @click="viewStudio">
+                    <v-icon class="mr-1">{{ mdiPencilRuler }}</v-icon>
+                    {{ $t('Files.ViewStudio') }}
+                </v-list-item>
                 <v-list-item :disabled="!isGcodeFile" @click="scanMeta">
                     <v-icon class="mr-1">{{ mdiMagnify }}</v-icon>
                     {{ $t('Files.ScanMeta') }}
@@ -142,6 +146,7 @@ import {
     mdiPlaylistPlus,
     mdiRenameBox,
     mdiVideo3d,
+    mdiPencilRuler,
 } from '@mdi/js'
 import ControlMixin from '@/components/mixins/control'
 import { convertPrintStatusIcon, convertPrintStatusIconColor, escapePath } from '@/plugins/helpers'
@@ -177,6 +182,7 @@ export default class GcodefilesPanelTableRowFile extends Mixins(BaseMixin, Contr
     mdiPlaylistPlus = mdiPlaylistPlus
     mdiRenameBox = mdiRenameBox
     mdiVideo3d = mdiVideo3d
+    mdiPencilRuler = mdiPencilRuler
 
     showContextMenu = false
     showContextMenuX = 0
@@ -250,6 +256,13 @@ export default class GcodefilesPanelTableRowFile extends Mixins(BaseMixin, Contr
     view3D() {
         this.$router.push({
             path: '/viewer',
+            query: { filename: 'gcodes' + this.currentPath + '/' + this.item.filename },
+        })
+    }
+
+    viewStudio() {
+        this.$router.push({
+            path: '/studio',
             query: { filename: 'gcodes' + this.currentPath + '/' + this.item.filename },
         })
     }

@@ -1,7 +1,7 @@
 import Component from 'vue-class-component'
 import routes, { AppRoute } from '@/routes'
 import { Mixins, Watch } from 'vue-property-decorator'
-import { mdiLinkVariant, mdiViewDashboardOutline } from '@mdi/js'
+import { mdiLinkVariant, mdiViewDashboardOutline, mdiTortoise } from '@mdi/js'
 import BaseMixin from '@/components/mixins/base'
 import { PrinterStateKlipperConfig } from '@/store/printer/types'
 import { GuiNavigationStateEntry } from '@/store/gui/navigation/types'
@@ -83,6 +83,26 @@ export default class NavigationMixin extends Mixins(BaseMixin) {
             })
         }
 
+        // TurtleStitch link (opens in new tab)
+        if (this.turtleStitchUrl) {
+            const [position, visible] = this.getUiSettings({
+                type: 'link',
+                title: 'TurtleStitch',
+                visible: true,
+                position: 150,
+            })
+
+            points.push({
+                type: 'link',
+                title: 'TurtleStitch',
+                icon: mdiTortoise,
+                href: this.turtleStitchUrl,
+                target: '_blank',
+                position,
+                visible,
+            })
+        }
+
         return points
     }
 
@@ -124,6 +144,14 @@ export default class NavigationMixin extends Mixins(BaseMixin) {
 
     get webcamCount(): number {
         return this.$store.getters['gui/webcams/getWebcams'].length
+    }
+
+    get turtleStitchUrl(): string {
+        const envUrl = (import.meta as any).env?.VITE_TURTLESTITCH_URL ?? ''
+        if (envUrl) return envUrl
+
+        const host = window.location.hostname || 'localhost'
+        return `http://${host}:3000`
     }
 
     @Watch('sidebarNaviFile', { immediate: true })

@@ -18,6 +18,7 @@ import {
     mdiHistory,
     mdiTimelapse,
     mdiWrench,
+    mdiNeedle,
 } from '@mdi/js'
 
 const routes: AppRoute[] = [
@@ -93,6 +94,17 @@ const routes: AppRoute[] = [
         alwaysShow: true,
         showInNavi: true,
         position: 60,
+        fullscreen: true,
+    },
+    {
+        name: 'gcodestudio',
+        title: 'G-Code Studio',
+        path: '/studio',
+        icon: mdiNeedle,
+        component: () => import('../pages/GCodeStudio.vue'),
+        alwaysShow: true,
+        showInNavi: true,
+        position: 65,
         fullscreen: true,
     },
     {

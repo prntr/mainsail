@@ -13,8 +13,11 @@
                     <span class="d-none d-sm-block">{{ $t('GCodeViewer.ReloadRequired') }}</span>
                     <v-icon class="d-sm-none">{{ mdiReloadAlert }}</v-icon>
                 </v-btn>
-                <v-btn icon tile @click="resetCamera">
+                <v-btn icon tile @click="resetCamera" :title="$t('GCodeViewer.ResetCamera')">
                     <v-icon>{{ mdiCameraRetake }}</v-icon>
+                </v-btn>
+                <v-btn v-if="embroideryMode" icon tile @click="setTopDownCamera" :title="$t('GCodeViewer.TopView')">
+                    <v-icon>{{ mdiCropFree }}</v-icon>
                 </v-btn>
             </template>
             <v-card-text>
@@ -283,6 +286,8 @@ import {
     mdiFastForward,
     mdiBroom,
     mdiSelectionRemove,
+    mdiAxisArrow,
+    mdiCropFree,
 } from '@mdi/js'
 import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 import { Debounce } from 'vue-debounce-decorator'
@@ -306,6 +311,8 @@ export default class Viewer extends Mixins(BaseMixin) {
      */
     mdiReloadAlert = mdiReloadAlert
     mdiCameraRetake = mdiCameraRetake
+    mdiAxisArrow = mdiAxisArrow
+    mdiCropFree = mdiCropFree
     mdiToggleSwitch = mdiToggleSwitch
     mdiToggleSwitchOffOutline = mdiToggleSwitchOffOutline
     mdiClose = mdiClose
@@ -355,6 +362,7 @@ export default class Viewer extends Mixins(BaseMixin) {
     resizeObserver: ResizeObserver | null = null
 
     @Prop({ type: String, default: '', required: false }) declare filename: string
+    @Prop({ type: Boolean, default: false, required: false }) declare embroideryModeDefault: boolean
     @Ref('fileInput') declare fileInput: HTMLInputElement
     @Ref('viewerCanvasContainer') declare viewerCanvasContainer: HTMLElement
 
@@ -570,6 +578,13 @@ export default class Viewer extends Mixins(BaseMixin) {
         this.scrubFileSize = viewer.fileSize
 
         viewer.gcodeProcessor.updateFilePosition(viewer.fileSize)
+
+        // In embroidery mode, automatically set top-down camera view
+        if (this.embroideryMode) {
+            this.$nextTick(() => {
+                this.setTopDownCamera()
+            })
+        }
     }
 
     refreshPrintingObjects() {
@@ -607,10 +622,15 @@ export default class Viewer extends Mixins(BaseMixin) {
                 // Do something with result
                 let processedBlob = blob
                 if (this.embroideryMode) {
+                    this.parsedEmbroideryColors = [] // Reset before parsing
                     processedBlob = this.preprocessEmbroideryGCode(blob)
                 }
                 await viewer.processFile(processedBlob)
                 this.fileData = viewer.fileData
+                // Load embroidery colors if parsed
+                if (this.embroideryMode && this.parsedEmbroideryColors.length > 0) {
+                    this.loadToolColors(this.parsedEmbroideryColors)
+                }
             }
             this.finishLoad()
         })
@@ -649,10 +669,15 @@ export default class Viewer extends Mixins(BaseMixin) {
         viewer.updateRenderQuality(this.renderQuality.value)
         let processedText = text
         if (this.embroideryMode) {
+            this.parsedEmbroideryColors = [] // Reset before parsing
             processedText = this.preprocessEmbroideryGCode(text)
         }
         await viewer.processFile(processedText)
         this.fileData = viewer.fileData
+        // Load embroidery colors if parsed
+        if (this.embroideryMode && this.parsedEmbroideryColors.length > 0) {
+            this.loadToolColors(this.parsedEmbroideryColors)
+        }
         this.loadingPercent = 100
         this.finishLoad()
         this.scrubFileSize = viewer.fileSize
@@ -693,6 +718,53 @@ export default class Viewer extends Mixins(BaseMixin) {
 
     resetCamera() {
         viewer.resetCamera()
+        // In embroidery mode, default to top-down view
+        if (this.embroideryMode) {
+            this.$nextTick(() => {
+                this.setTopDownCamera()
+            })
+        }
+    }
+
+    /**
+     * Set camera to top-down orthographic-like view for 2D embroidery viewing
+     * Locks camera to look straight down at the XY plane
+     */
+    setTopDownCamera() {
+        if (!viewer || !viewer.scene) return
+
+        // Use the viewbox "Top" camera position
+        // This positions camera directly above looking down
+        viewer.setViewboxCameraPosition({ x: 0, y: -1, z: 0 })
+
+        // Lock camera angles for 2D-like view via scene.activeCamera
+        // beta = 0 means looking straight down
+        // alpha = 270° (3π/2) means aligned with Y axis
+        const camera = viewer.scene.activeCamera
+        if (camera) {
+            camera.beta = 0.01 // Nearly 0 (can't be exactly 0)
+            camera.alpha = (3 * Math.PI) / 2
+            // Lock rotation for pure 2D panning/zooming
+            camera.lowerBetaLimit = 0.01
+            camera.upperBetaLimit = 0.01
+        }
+
+        viewer.forceRender()
+    }
+
+    /**
+     * Unlock camera for free 3D rotation (used when exiting embroidery mode)
+     */
+    unlockCamera() {
+        if (!viewer || !viewer.scene) return
+
+        const camera = viewer.scene.activeCamera
+        if (!camera) return
+
+        camera.lowerBetaLimit = 0.1
+        camera.upperBetaLimit = Math.PI - 0.1
+        camera.lowerAlphaLimit = null
+        camera.upperAlphaLimit = null
     }
 
     setReloadRequiredFlag() {
@@ -918,51 +990,124 @@ export default class Viewer extends Mixins(BaseMixin) {
     }
 
     get embroideryMode() {
-        return this.$store.state.gui.gcodeViewer.embroideryMode ?? false
+        // Use prop default if store value is not set
+        const storeValue = this.$store.state.gui.gcodeViewer.embroideryMode
+        if (storeValue === undefined || storeValue === null) {
+            return this.embroideryModeDefault
+        }
+        return storeValue
     }
 
     set embroideryMode(newVal) {
         this.$store.dispatch('gui/saveSetting', { name: 'gcodeViewer.embroideryMode', value: newVal })
         if (viewer) {
-            // In embroidery mode, flatten Z to XY plane
-            // Z movements represent stitches, not height
+            // In embroidery mode, treat G1 as extrusion and use wire mode
             if (newVal) {
                 viewer.gcodeProcessor.g1AsExtrusion = true
                 viewer.gcodeProcessor.updateForceWireMode(true)
+                // Switch to top-down view
+                this.$nextTick(() => {
+                    this.setTopDownCamera()
+                })
             } else {
                 // Restore normal 3D view
                 viewer.gcodeProcessor.g1AsExtrusion = this.cncMode
                 viewer.gcodeProcessor.updateForceWireMode(this.forceLineRendering || this.cncMode)
+                // Unlock camera for 3D rotation
+                this.unlockCamera()
             }
             this.reloadViewer()
         }
     }
 
     /**
-     * Preprocess embroidery G-code to flatten Z movements to XY plane
-     * In embroidery, Z represents stitch count, not height
-     * Also adds E parameter to mark stitch locations
+     * Preprocess embroidery G-code for 2D visualization
+     * - Parses TurtleStitch color comments and converts to tool changes
+     * - Removes Z-only lines (Z represents stitch count, not height)
+     * - Adds E parameter to XY moves so lines are rendered as extrusions
+     *
+     * TurtleStitch format has Z on separate lines:
+     *   G1 X2.000 Y8.596
+     *   G1 Z5.000         <- Z-only line (stitch marker)
+     *   G1 X4.000 Y8.596
+     *   G1 Z10.000
      */
     preprocessEmbroideryGCode(gcode: string): string {
         const lines = gcode.split('\n')
+        let toolNumber = 0
         let stitchCount = 0
-        const processedLines = lines.map((line) => {
-            // Match G-code commands that contain Z parameter
-            if (/^G[01]\s/i.test(line) && /\sZ[\d.-]+/i.test(line)) {
-                stitchCount++
-                // Replace Z parameter with Z0 and add a small E value to mark the stitch
-                // This creates a visible "extrusion" point at each stitch location
-                const withoutZ = line.replace(/\sZ[\d.-]+/gi, ' Z0')
-                // Add E parameter to create a dot (0.01mm extrusion)
-                if (!withoutZ.includes(' E')) {
-                    return withoutZ + ' E' + (stitchCount * 0.01).toFixed(4)
+        const colorToTool: Map<string, number> = new Map()
+        const toolColors: string[] = []
+        const processedLines: string[] = []
+
+        for (const line of lines) {
+            const trimmedLine = line.trim()
+
+            // Parse TurtleStitch color comments: ; color r:X g:Y b:Z
+            const colorMatch = trimmedLine.match(/;\s*color\s+r:(\d+)\s+g:(\d+)\s+b:(\d+)/i)
+            if (colorMatch) {
+                const r = parseInt(colorMatch[1])
+                const g = parseInt(colorMatch[2])
+                const b = parseInt(colorMatch[3])
+                const colorKey = `${r},${g},${b}`
+                const hexColor = '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')
+
+                if (!colorToTool.has(colorKey)) {
+                    colorToTool.set(colorKey, toolNumber)
+                    toolColors.push(hexColor)
+                    toolNumber++
                 }
-                return withoutZ
+
+                const tool = colorToTool.get(colorKey)
+                processedLines.push(line) // Keep original comment
+                processedLines.push(`T${tool}`) // Add tool change
+                continue
             }
-            return line
-        })
+
+            // Check for Z-only lines (G1 Z5.000) - these mark stitches
+            // Skip these lines but count them as stitches
+            const zOnlyMatch = trimmedLine.match(/^G[01]\s+Z[\d.-]+\s*$/i)
+            if (zOnlyMatch) {
+                stitchCount++
+                // Skip Z-only lines - they just indicate stitch count
+                continue
+            }
+
+            // Check for G0/G1 with X or Y coordinates (actual move commands)
+            const moveMatch = trimmedLine.match(/^G([01])\s+(.+)/i)
+            if (moveMatch && (trimmedLine.includes('X') || trimmedLine.includes('Y'))) {
+                const gCode = moveMatch[1]
+                // For G1 moves (not G0 rapid moves), add E parameter for extrusion rendering
+                if (gCode === '1') {
+                    // Remove any existing Z parameter and add E
+                    let cleanLine = line.replace(/\s+Z[\d.-]+/gi, '')
+                    if (!cleanLine.includes(' E')) {
+                        stitchCount++
+                        processedLines.push(cleanLine + ' E' + (stitchCount * 0.01).toFixed(4))
+                    } else {
+                        processedLines.push(cleanLine)
+                    }
+                } else {
+                    // G0 rapid moves - keep as-is (travel moves)
+                    processedLines.push(line)
+                }
+                continue
+            }
+
+            // Keep all other lines (comments, G21, G90, M400, M84, etc.)
+            processedLines.push(line)
+        }
+
+        // Store parsed colors for tool loading
+        if (toolColors.length > 0) {
+            this.parsedEmbroideryColors = toolColors
+        }
+
         return processedLines.join('\n')
     }
+
+    // Store parsed embroidery colors for tool loading
+    parsedEmbroideryColors: string[] = []
 
     get extruderColors() {
         return this.$store.state.gui.gcodeViewer?.extruderColors ?? false

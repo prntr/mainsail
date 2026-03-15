@@ -39,6 +39,7 @@ export const initableServerComponents = [
     'announcements',
     'spoolman',
     'sensor',
+    'wifiManager',
 ]
 
 /*

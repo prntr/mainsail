@@ -81,6 +81,7 @@ import SettingsGCodeViewerTab from '@/components/settings/SettingsGCodeViewerTab
 import SettingsEditorTab from '@/components/settings/SettingsEditorTab.vue'
 import SettingsTimelapseTab from '@/components/settings/SettingsTimelapseTab.vue'
 import SettingsNavigationTab from '@/components/settings/SettingsNavigationTab.vue'
+import SettingsWifiTab from '@/components/settings/SettingsWifiTab.vue'
 
 import Panel from '@/components/ui/Panel.vue'
 import {
@@ -101,6 +102,7 @@ import {
     mdiDipSwitch,
     mdiMenu,
     mdiGrid,
+    mdiWifi,
 } from '@mdi/js'
 import SettingsMiscellaneousTab from '@/components/settings/SettingsMiscellaneousTab.vue'
 import SettingsHeightmapTab from '@/components/settings/SettingsHeightmapTab.vue'
@@ -123,6 +125,7 @@ import SettingsHeightmapTab from '@/components/settings/SettingsHeightmapTab.vue
         SettingsMiscellaneousTab,
         SettingsNavigationTab,
         SettingsHeightmapTab,
+        SettingsWifiTab,
     },
 })
 export default class TheSettingsMenu extends Mixins(BaseMixin) {
@@ -218,6 +221,14 @@ export default class TheSettingsMenu extends Mixins(BaseMixin) {
                 icon: mdiTimelapse,
                 name: 'timelapse',
                 title: this.$t('Settings.TimelapseTab.Timelapse'),
+            })
+        }
+
+        if (this.moonrakerComponents.includes('wifi_manager')) {
+            tabs.push({
+                icon: mdiWifi,
+                name: 'wifi',
+                title: this.$t('Settings.WifiTab.Wifi'),
             })
         }
 

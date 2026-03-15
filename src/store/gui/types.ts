@@ -93,6 +93,29 @@ export interface GuiState {
         showGCodePanel: boolean
         cncMode: boolean
     }
+    gcodeStudio: {
+        frameWidth: number
+        frameHeight: number
+        framePreset: string
+        showGrid: boolean
+        gridSpacing: number
+        showStitchPoints: boolean
+        showJumpStitches: boolean
+        showColorChanges: boolean
+        showNeedlePosition: boolean
+        showFrameBorder: boolean
+        showTransformedGcode: boolean
+        rotationDeg: number
+        rotationPivot: string
+        backgroundColor: string
+        gridColor: string
+        frameColor: string
+        stitchColors: string[]
+    }
+    wifi: {
+        apSsid: string
+        apPassword: string
+    }
     macros?: GuiMacrosState
     navigation: GuiNavigationState
     notifications?: GuiNotificationState
