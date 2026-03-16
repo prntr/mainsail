@@ -1,3 +1,10 @@
+> **This is a fork of [Mainsail](https://github.com/mainsail-crew/mainsail)** modified for the [StitchLabOS](https://github.com/prntr/StitchlabOS) embroidery project.
+>
+> Changes from upstream (branch `stitchlabos/v2.17.0`, based on v2.17.0):
+> - Embroidery panel with needle status and stitch controls
+> - WiFi Manager UI for headless network configuration
+> - GCode Studio 2D embroidery viewer
+
 <p align="center">
   <a>
     <img src="https://raw.githubusercontent.com/mainsail-crew/docs/master/assets/img/logo.png" alt='Mainsail logo' height="152">
