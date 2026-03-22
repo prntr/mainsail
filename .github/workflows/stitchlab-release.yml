@@ -1,0 +1,61 @@
+name: StitchLAB Release
+
+on:
+  push:
+    branches:
+      - 'stitchlabos/*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract upstream version from branch name
+        id: version
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          # Branch format: stitchlabos/v2.17.0 → upstream version: 2.17.0
+          UPSTREAM_VERSION="${BRANCH#stitchlabos/v}"
+          echo "upstream=$UPSTREAM_VERSION" >> $GITHUB_OUTPUT
+
+          # Auto-increment build number by querying existing releases
+          LATEST=$(gh release list --limit 100 --json tagName -q \
+            "[.[] | select(.tagName | startswith(\"v${UPSTREAM_VERSION}-stitchlab.\"))] | length" \
+            2>/dev/null || echo "0")
+          BUILD=$((LATEST + 1))
+          TAG="v${UPSTREAM_VERSION}-stitchlab.${BUILD}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Release tag: $TAG"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body: |
+            StitchLAB Mainsail build based on upstream v${{ steps.version.outputs.upstream }}.
+
+            Download `mainsail.zip` and place in `/home/pi/mainsail/` — or let Moonraker update_manager handle it automatically.
+          files: dist/mainsail.zip
+          draft: false
+          prerelease: false
