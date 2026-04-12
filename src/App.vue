@@ -218,7 +218,7 @@ export default class App extends Mixins(BaseMixin, ThemeMixin) {
         })
     }
 
-    @Watch('mode')
+    @Watch('mode', { immediate: true })
     modeChanged(newVal: string): void {
         const dark = newVal !== 'light'
         this.$vuetify.theme.dark = dark
@@ -343,7 +343,7 @@ export default class App extends Mixins(BaseMixin, ThemeMixin) {
         this.drawFavicon(this.print_percent)
     }
 
-    @Watch('themeCss')
+    @Watch('themeCss', { immediate: true })
     themeCssChanged(newVal: string | null): void {
         // remove linked CSS file if it exists
         const style = document.getElementById('theme-css')

@@ -235,14 +235,14 @@ export class WebSocketClient {
     }
 
     heartbeat(): void {
-        if (this.heartbeatTimer) clearInterval(this.heartbeatTimer)
+        if (this.heartbeatTimer) clearTimeout(this.heartbeatTimer)
 
         this.heartbeatTimer = window.setTimeout(() => {
             if (this.instance?.readyState !== WebSocket.OPEN || !this.store) return
 
             this.close()
             this.store?.dispatch('socket/onClose')
-        }, 10000)
+        }, 30000)
     }
 }
 

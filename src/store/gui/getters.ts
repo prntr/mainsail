@@ -74,9 +74,16 @@ export const getters: GetterTree<GuiState, any> = {
             allPanels = allPanels.filter((name) => name !== 'extruder-control')
         }
 
-        // remove temperature panel, if sensors < 1
+        const isEmbroideryMode = getters.theme === 'stitchlab'
         const printerTemperatureSensors = rootState.printer?.heaters?.available_sensors ?? []
-        if (printerTemperatureSensors.length < 1) {
+        const hostTemperatureSensor = rootGetters['server/getHostStats']?.tempSensor ?? null
+        const hasMcuTemperatureSensor = (rootGetters['printer/getMcus'] ?? []).some(
+            (mcu: any) => mcu?.tempSensor !== null
+        )
+        const hasEmbroideryTemperatures = hostTemperatureSensor !== null || hasMcuTemperatureSensor
+
+        // remove temperature panel, if no temperature sources exist
+        if (printerTemperatureSensors.length < 1 && !(isEmbroideryMode && hasEmbroideryTemperatures)) {
             allPanels = allPanels.filter((name) => name !== 'temperature')
         }
 

@@ -6,7 +6,10 @@ import { GuiNavigationState } from '@/store/gui/navigation/types'
 
 export const getDefaultState = (): GuiNavigationState => {
     return {
-        entries: [],
+        entries: [
+            { type: 'route', title: 'Heightmap', visible: false, position: 40 },
+            { type: 'route', title: 'G-Code Viewer', visible: false, position: 60 },
+        ],
     }
 }
 

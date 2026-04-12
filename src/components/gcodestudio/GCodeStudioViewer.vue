@@ -279,6 +279,7 @@ import axios, { AxiosProgressEvent } from 'axios'
 import { escapePath, formatFilesize } from '@/plugins/helpers'
 import Panel from '@/components/ui/Panel.vue'
 import CodeStream from '@/components/gcodeviewer/CodeStream.vue'
+import { needleIcon } from '@/components/icons/needleIcon'
 import {
     mdiCameraRetake,
     mdiCog,
@@ -286,7 +287,6 @@ import {
     mdiReloadAlert,
     mdiToggleSwitch,
     mdiToggleSwitchOffOutline,
-    mdiNeedle,
     mdiFitToScreen,
     mdiPlay,
     mdiPause,
@@ -329,7 +329,7 @@ export default class GCodeStudioViewer extends Mixins(BaseMixin) {
     mdiToggleSwitchOffOutline = mdiToggleSwitchOffOutline
     mdiClose = mdiClose
     mdiCog = mdiCog
-    mdiNeedle = mdiNeedle
+    mdiNeedle = needleIcon
     mdiFitToScreen = mdiFitToScreen
     mdiPlay = mdiPlay
     mdiPause = mdiPause

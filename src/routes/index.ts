@@ -18,8 +18,8 @@ import {
     mdiHistory,
     mdiTimelapse,
     mdiWrench,
-    mdiNeedle,
 } from '@mdi/js'
+import { needleIcon } from '@/components/icons/needleIcon'
 
 const routes: AppRoute[] = [
     {
@@ -100,7 +100,7 @@ const routes: AppRoute[] = [
         name: 'gcodestudio',
         title: 'G-Code Studio',
         path: '/studio',
-        icon: mdiNeedle,
+        icon: needleIcon,
         component: () => import('../pages/GCodeStudio.vue'),
         alwaysShow: true,
         showInNavi: true,

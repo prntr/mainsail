@@ -82,13 +82,14 @@ import { Component, Mixins, Watch } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import ControlMixin from '@/components/mixins/control'
 import Panel from '@/components/ui/Panel.vue'
-import { mdiNeedle, mdiArrowUp, mdiSwapVertical, mdiTarget, mdiLock } from '@mdi/js'
+import { needleIcon } from '@/components/icons/needleIcon'
+import { mdiArrowUp, mdiSwapVertical, mdiTarget, mdiLock } from '@mdi/js'
 
 @Component({
     components: { Panel },
 })
 export default class EmbroideryControlPanel extends Mixins(BaseMixin, ControlMixin) {
-    mdiNeedle = mdiNeedle
+    mdiNeedle = needleIcon
     mdiArrowUp = mdiArrowUp
     mdiSwapVertical = mdiSwapVertical
     mdiTarget = mdiTarget

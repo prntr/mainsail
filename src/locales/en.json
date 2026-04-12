@@ -349,6 +349,9 @@
         "Ultra": "Ultra",
         "VoxelMode": "Voxel Mode (ASMBL)"
     },
+    "EmbroideryPreview": {
+        "Stitch": "Stitch"
+    },
     "GCodeStudio": {
         "Title": "G-Code Studio",
         "CenterView": "Center View",
@@ -1107,7 +1110,14 @@
             "Toolchange": "Toolchange",
             "Total": "Total",
             "TotalTime": "Total Time",
-            "Unknown": "Unknown"
+            "Unknown": "Unknown",
+            "Stitch": "Stitch",
+            "Jumps": "Jumps",
+            "Design": "Design",
+            "DesignSize": "Design dimensions",
+            "Needle": "Needle",
+            "NeedleUp": "UP",
+            "NeedleDown": "DOWN"
         },
         "TemperaturePanel": {
             "AutoscaleChart": "Autoscale Chart",

@@ -304,15 +304,15 @@
                                 </v-expansion-panel-header>
                                 <v-expansion-panel-content>
                                     <div class="mb-2">
-                                        <label class="v-label theme--dark color-label">{{ $t('GCodeStudio.Stitch') }}</label>
+                                        <label class="v-label color-label">{{ $t('GCodeStudio.Stitch') }}</label>
                                         <input v-model="stitchColor" type="color" class="color-picker" @change="updatePathColors" />
                                     </div>
                                     <div class="mb-2">
-                                        <label class="v-label theme--dark color-label">{{ $t('GCodeStudio.JumpStitches') }}</label>
+                                        <label class="v-label color-label">{{ $t('GCodeStudio.JumpStitches') }}</label>
                                         <input v-model="travelColor" type="color" class="color-picker" @change="updatePathColors" />
                                     </div>
                                     <div class="mb-2">
-                                        <label class="v-label theme--dark color-label">{{ $t('GCodeStudio.StitchPoints') }}</label>
+                                        <label class="v-label color-label">{{ $t('GCodeStudio.StitchPoints') }}</label>
                                         <input v-model="stitchPointColor" type="color" class="color-picker" @change="updatePathColors" />
                                     </div>
                                 </v-expansion-panel-content>
@@ -494,8 +494,8 @@ import { Debounce } from 'vue-debounce-decorator'
 import paper from 'paper'
 import gcodeToGeometryUrl from '@/lib/gcode2dviewer/gcodetogeometry.min.js?url'
 import { FileStateGcodefile } from '@/store/files/types'
+import { needleIcon } from '@/components/icons/needleIcon'
 import {
-    mdiNeedle,
     mdiCameraRetake,
     mdiBroom,
     mdiSquareOutline,
@@ -593,7 +593,7 @@ declare global {
     components: { Panel, CodeStream },
 })
 export default class GCodeStudio2D extends Mixins(BaseMixin) {
-    mdiNeedle = mdiNeedle
+    mdiNeedle = needleIcon
     mdiCameraRetake = mdiCameraRetake
     mdiBroom = mdiBroom
     mdiSquareOutline = mdiSquareOutline
@@ -642,9 +642,9 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     scrubInterval: ReturnType<typeof setInterval> | undefined = undefined
     scrubFileSize = 0
 
-    stitchColor = '#FF0000'
-    travelColor = '#00FF00'
-    stitchPointColor = '#FFD54F'
+    stitchColor = '#ed8796'
+    travelColor = '#a6da95'
+    stitchPointColor = '#eed49f'
 
     renderLines: RenderLine[] = []
     renderItems: RenderItem[] = []
@@ -683,6 +683,9 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     boundMouseUp?: (event: MouseEvent) => void
     boundMouseLeave?: (event: MouseEvent) => void
     boundWheel?: (event: WheelEvent) => void
+    boundTouchStart?: (event: TouchEvent) => void
+    boundTouchMove?: (event: TouchEvent) => void
+    boundTouchEnd?: (event: TouchEvent) => void
     boundKeyDown?: (event: KeyboardEvent) => void
     autoFitRequestId: number | null = null
     resizeAutoFitTimeout: number | null = null
@@ -717,6 +720,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     get canvasCols() {
+        if (this.isMobile) return 12
+        if (this.isTablet) return 12
         if (this.showGCode && this.showRightPanel) return 6
         if (this.showGCode) return 8
         if (this.showRightPanel) return 9
@@ -724,10 +729,14 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     get gcodeCols() {
+        if (this.isMobile) return 12
+        if (this.isTablet) return this.showRightPanel ? 6 : 12
         return this.showRightPanel ? 4 : 4
     }
 
     get settingsCols() {
+        if (this.isMobile) return 12
+        if (this.isTablet) return this.showGCode ? 6 : 12
         return this.showGCode ? 2 : 3
     }
 
@@ -736,15 +745,17 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     get backgroundColor() {
-        return this.$store.state.gui.gcodeStudio?.backgroundColor ?? '#1a1a2e'
+        const defaultColor = this.$vuetify.theme.dark ? '#303446' : '#eff1f5'
+        return this.$store.state.gui.gcodeStudio?.backgroundColor ?? defaultColor
     }
 
     get gridColor() {
-        return this.$store.state.gui.gcodeStudio?.gridColor ?? '#2d2d4a'
+        const defaultColor = this.$vuetify.theme.dark ? '#414559' : '#ccd0da'
+        return this.$store.state.gui.gcodeStudio?.gridColor ?? defaultColor
     }
 
     get frameColor() {
-        return this.$store.state.gui.gcodeStudio?.frameColor ?? '#4a90d9'
+        return this.$store.state.gui.gcodeStudio?.frameColor ?? (this.$vuetify.theme.dark ? '#c6a0f6' : '#8839ef')
     }
 
     get showGrid() {
@@ -1106,6 +1117,14 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         this.canvas.addEventListener('mouseup', this.boundMouseUp)
         this.canvas.addEventListener('mouseleave', this.boundMouseLeave)
         this.canvas.addEventListener('wheel', this.boundWheel, { passive: false })
+
+        this.boundTouchStart = (event: TouchEvent) => this.handleTouchStart(event)
+        this.boundTouchMove = (event: TouchEvent) => this.handleTouchMove(event)
+        this.boundTouchEnd = () => this.handleTouchEnd()
+
+        this.canvas.addEventListener('touchstart', this.boundTouchStart, { passive: false })
+        this.canvas.addEventListener('touchmove', this.boundTouchMove, { passive: false })
+        this.canvas.addEventListener('touchend', this.boundTouchEnd)
     }
 
     unbindCanvasEvents(): void {
@@ -1116,6 +1135,9 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         if (this.boundMouseUp) this.canvas.removeEventListener('mouseup', this.boundMouseUp)
         if (this.boundMouseLeave) this.canvas.removeEventListener('mouseleave', this.boundMouseLeave)
         if (this.boundWheel) this.canvas.removeEventListener('wheel', this.boundWheel)
+        if (this.boundTouchStart) this.canvas.removeEventListener('touchstart', this.boundTouchStart)
+        if (this.boundTouchMove) this.canvas.removeEventListener('touchmove', this.boundTouchMove)
+        if (this.boundTouchEnd) this.canvas.removeEventListener('touchend', this.boundTouchEnd)
     }
 
     bindKeyboardEvents(): void {
@@ -1197,6 +1219,57 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     handleMouseLeave(): void {
+        this.isPanning = false
+        this.lastPanPoint = null
+        this.isDraggingDesign = false
+        this.lastDragPoint = null
+    }
+
+    getTouchCanvasOffset(touch: Touch): { offsetX: number; offsetY: number } {
+        const rect = this.canvas.getBoundingClientRect()
+        return {
+            offsetX: touch.clientX - rect.left,
+            offsetY: touch.clientY - rect.top,
+        }
+    }
+
+    handleTouchStart(event: TouchEvent): void {
+        if (!this.paperScope || event.touches.length !== 1) return
+        event.preventDefault()
+
+        const { offsetX, offsetY } = this.getTouchCanvasOffset(event.touches[0])
+        const point = this.paperScope.view.viewToProject(new this.paperScope.Point(offsetX, offsetY))
+
+        if (this.moveMode && this.loadedFile) {
+            this.isDraggingDesign = true
+            this.lastDragPoint = point
+        } else {
+            this.isPanning = true
+            this.lastPanPoint = point
+        }
+    }
+
+    handleTouchMove(event: TouchEvent): void {
+        if (!this.paperScope || event.touches.length !== 1) return
+        event.preventDefault()
+
+        const { offsetX, offsetY } = this.getTouchCanvasOffset(event.touches[0])
+        const point = this.paperScope.view.viewToProject(new this.paperScope.Point(offsetX, offsetY))
+
+        if (this.isDraggingDesign && this.lastDragPoint && this.loadedFile) {
+            const delta = point.subtract(this.lastDragPoint)
+            this.designOffsetX += delta.x
+            this.designOffsetY -= delta.y
+            this.lastDragPoint = point
+            this.updateDesignPosition()
+        } else if (this.isPanning && this.lastPanPoint) {
+            const delta = point.subtract(this.lastPanPoint)
+            this.paperScope.view.center = this.paperScope.view.center.subtract(delta)
+            this.lastPanPoint = point
+        }
+    }
+
+    handleTouchEnd(): void {
         this.isPanning = false
         this.lastPanPoint = null
         this.isDraggingDesign = false
@@ -1606,7 +1679,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
             const point = this.toDesignPoint(line.line.start)
             const marker = new this.paperScope!.Path.Circle(point, 1.2)
             marker.fillColor = new this.paperScope!.Color(line.color)
-            marker.strokeColor = new this.paperScope!.Color('#000000')
+            marker.strokeColor = new this.paperScope!.Color(this.$vuetify.theme.dark ? '#232634' : '#dce0e8')
             marker.strokeWidth = 0.2
             this.colorChangeItems.push({ item: marker, moveIndex: index })
         })
@@ -1658,8 +1731,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
             new this.paperScope!.Point(center.x, center.y + size)
         )
 
-        horizontal.strokeColor = new this.paperScope!.Color('#ffffff')
-        vertical.strokeColor = new this.paperScope!.Color('#ffffff')
+        horizontal.strokeColor = new this.paperScope!.Color(this.$vuetify.theme.dark ? '#c6d0f5' : '#4c4f69')
+        vertical.strokeColor = new this.paperScope!.Color(this.$vuetify.theme.dark ? '#c6d0f5' : '#4c4f69')
         horizontal.strokeWidth = 0.8
         vertical.strokeWidth = 0.8
 
@@ -2370,7 +2443,9 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 <style scoped>
 .canvas-wrapper {
     position: relative;
-    height: 500px;
+    height: calc(100vh - 220px);
+    min-height: 300px;
+    max-height: 800px;
     border-radius: 4px;
     overflow: hidden;
 }
@@ -2389,8 +2464,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     position: absolute;
     bottom: 8px;
     left: 8px;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
+    background: var(--ctp-crust, rgba(0, 0, 0, 0.7));
+    color: var(--ctp-text, white);
     padding: 4px 8px;
     border-radius: 4px;
     font-family: monospace;
@@ -2399,9 +2474,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 }
 
 .right-panel {
-    background: var(--v-background-base, #ffffff);
-    height: 500px;
-    max-height: 500px;
+    height: calc(100vh - 220px);
+    max-height: calc(100vh - 220px);
     overflow-y: auto;
     font-size: 13px;
 }
@@ -2409,14 +2483,13 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 .color-picker {
     width: 100%;
     height: 40px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--ctp-surface1, rgba(128, 128, 128, 0.25));
     border-radius: 4px;
     cursor: pointer;
     background: transparent;
 }
 
 .color-label {
-    color: rgba(0, 0, 0, 0.9) !important;
     font-weight: 500;
 }
 
@@ -2435,9 +2508,9 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 }
 
 .viewer {
-    height: 500px;
-    min-height: 300px;
-    border: 1px solid rgba(0, 0, 0, 0.15);
+    height: calc(100vh - 220px);
+    min-height: 200px;
+    border: 1px solid var(--ctp-surface0, rgba(128, 128, 128, 0.25));
     border-radius: 4px;
     overflow: hidden;
 }

@@ -24,6 +24,7 @@ export const actions: ActionTree<GuiState, RootState> = {
     async initStore({ commit, dispatch, rootGetters, rootState }, payload) {
         const baseUrl = rootGetters['socket/getUrl'] + '/server/database/item'
         const mainsailUrl = baseUrl + '?namespace=mainsail'
+        const defaultState = getDefaultState()
 
         if ('remoteprinters' in payload.value) {
             if (rootState.instancesDB === 'moonraker')
@@ -105,6 +106,37 @@ export const actions: ActionTree<GuiState, RootState> = {
                     }
                 }
             })
+
+            const theme = payload.value?.uiSettings?.theme ?? defaultState.uiSettings.theme
+            if (theme === 'stitchlab') {
+                layouts.forEach((layout) => {
+                    const defaultLayout = defaultState.dashboard[layout as keyof typeof defaultState.dashboard]
+                    if (!Array.isArray(defaultLayout) || (!layout.endsWith('Layout') && !layout.match(/Layout\d$/)))
+                        return
+                    if (!defaultLayout.some((entry: GuiStateLayoutoption) => entry.name === 'temperature')) return
+                    if (!(layout in dashboard) || !Array.isArray(dashboard[layout])) return
+
+                    const existingIndex = dashboard[layout].findIndex(
+                        (entry: GuiStateLayoutoption) => entry.name === 'temperature'
+                    )
+
+                    if (existingIndex === -1) {
+                        const defaultEntry = defaultLayout.find(
+                            (entry: GuiStateLayoutoption) => entry.name === 'temperature'
+                        )
+                        if (!defaultEntry) return
+
+                        dashboard[layout].push({ ...defaultEntry, visible: true })
+                    } else if (!dashboard[layout][existingIndex].visible) {
+                        dashboard[layout][existingIndex].visible = true
+                    }
+
+                    dispatch('saveSetting', {
+                        name: 'dashboard.' + layout,
+                        value: dashboard[layout],
+                    })
+                })
+            }
         }
 
         await commit('setData', payload.value)

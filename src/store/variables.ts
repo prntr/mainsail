@@ -1,7 +1,7 @@
 import { KlipperRepos, Theme } from '@/store/types'
 
-export const defaultMode = 'dark'
-export const defaultTheme = 'mainsail'
+export const defaultMode = 'light'
+export const defaultTheme = 'stitchlab'
 export const defaultLogoColor = '#D41216'
 export const defaultPrimaryColor = '#2196f3'
 export const defaultBigThumbnailBackground = '#1e1e1e'
@@ -213,6 +213,14 @@ export const themes: Theme[] = [
         colorLogo: '#234D7A',
         colorPrimary: '#234D7A',
         logo: { show: true, light: false },
+    },
+    {
+        name: 'stitchlab',
+        displayName: 'StitchLab',
+        colorLogo: '#4c4f69',
+        colorPrimary: '#1e66f5',
+        logo: { show: true, light: false },
+        css: true,
     },
 ]
 

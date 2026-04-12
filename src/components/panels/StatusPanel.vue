@@ -52,7 +52,8 @@
                     </v-list>
                 </v-menu>
             </template>
-            <status-panel-printstatus-thumbnail />
+            <embroidery-preview v-if="isEmbroideryMode && current_filename" />
+            <status-panel-printstatus-thumbnail v-else />
             <status-panel-exclude-object :show-dialog.sync="boolShowObjects" @update:showDialog="updateShowDialog" />
             <status-panel-pause-at-layer-dialog :show-dialog.sync="boolShowPauseAtLayer" />
             <template v-if="print_stats_message">
@@ -144,6 +145,7 @@ import StatusPanelJobqueue from '@/components/panels/Status/Jobqueue.vue'
 import StatusPanelExcludeObject from '@/components/panels/Status/ExcludeObject.vue'
 import StatusPanelPrintstatusThumbnail from '@/components/panels/Status/PrintstatusThumbnail.vue'
 import StatusPanelPauseAtLayerDialog from '@/components/panels/Status/PauseAtLayerDialog.vue'
+import EmbroideryPreview from '@/components/panels/Status/EmbroideryPreview.vue'
 import Panel from '@/components/ui/Panel.vue'
 import {
     mdiAlertOutline,
@@ -170,6 +172,7 @@ import ConfirmationDialog from '@/components/dialogs/ConfirmationDialog.vue'
 @Component({
     components: {
         ConfirmationDialog,
+        EmbroideryPreview,
         KlippyStatePanel,
         MinSettingsPanel,
         Panel,
@@ -219,6 +222,10 @@ export default class StatusPanel extends Mixins(BaseMixin) {
 
     get current_filename() {
         return this.$store.state.printer.print_stats?.filename ?? ''
+    }
+
+    get isEmbroideryMode(): boolean {
+        return (this.$store.state.gui.uiSettings?.theme ?? '') === 'stitchlab'
     }
 
     get current_file() {

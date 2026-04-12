@@ -1,0 +1,761 @@
+/*
+ * StitchLab Theme for Mainsail
+ * Based on Catppuccin — https://catppuccin.com
+ * Dark: Frappé  |  Light: Latte
+ * Color assignments follow https://github.com/catppuccin/catppuccin/blob/main/docs/style-guide.md
+ */
+
+/* ===================================================================
+   0. Typography — Montserrat (self-hosted, variable weight)
+   =================================================================== */
+
+/* latin-ext */
+@font-face {
+    font-family: 'Montserrat';
+    font-style: normal;
+    font-display: swap;
+    font-weight: 300 700;
+    src: url(/fonts/montserrat-latin-ext.woff2) format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+        U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+    font-family: 'Montserrat';
+    font-style: normal;
+    font-display: swap;
+    font-weight: 300 700;
+    src: url(/fonts/montserrat-latin.woff2) format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+        U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+.v-application {
+    font-family: 'Montserrat', 'Roboto', sans-serif !important;
+}
+.v-application .text-h1,
+.v-application .text-h2,
+.v-application .text-h3,
+.v-application .text-h4,
+.v-application .text-h5,
+.v-application .text-h6,
+.v-application .text-subtitle-1,
+.v-application .text-subtitle-2,
+.v-application .text-body-1,
+.v-application .text-body-2,
+.v-application .text-button,
+.v-application .text-caption,
+.v-application .text-overline {
+    font-family: 'Montserrat', 'Roboto', sans-serif !important;
+}
+
+/* ===================================================================
+   1. Palette custom properties — Frappé (dark) & Latte (light)
+   =================================================================== */
+
+html.theme--dark {
+    /* Frappé */
+    --ctp-rosewater: #f2d5cf;
+    --ctp-flamingo:  #eebebe;
+    --ctp-pink:      #f4b8e4;
+    --ctp-mauve:     #ca9ee6;
+    --ctp-red:       #e78284;
+    --ctp-maroon:    #ea999c;
+    --ctp-peach:     #ef9f76;
+    --ctp-yellow:    #e5c890;
+    --ctp-green:     #a6d189;
+    --ctp-teal:      #81c8be;
+    --ctp-sky:       #99d1db;
+    --ctp-sapphire:  #85c1dc;
+    --ctp-blue:      #8caaee;
+    --ctp-lavender:  #babbf1;
+
+    --ctp-text:      #c6d0f5;
+    --ctp-subtext1:  #b5bfe2;
+    --ctp-subtext0:  #a5adce;
+    --ctp-overlay2:  #949cbb;
+    --ctp-overlay1:  #838ba7;
+    --ctp-overlay0:  #737994;
+    --ctp-surface2:  #626880;
+    --ctp-surface1:  #51576d;
+    --ctp-surface0:  #414559;
+    --ctp-base:      #303446;
+    --ctp-mantle:    #292c3c;
+    --ctp-crust:     #232634;
+}
+
+html.theme--light {
+    /* Latte */
+    --ctp-rosewater: #dc8a78;
+    --ctp-flamingo:  #dd7878;
+    --ctp-pink:      #ea76cb;
+    --ctp-mauve:     #8839ef;
+    --ctp-red:       #d20f39;
+    --ctp-maroon:    #e64553;
+    --ctp-peach:     #fe640b;
+    --ctp-yellow:    #df8e1d;
+    --ctp-green:     #40a02b;
+    --ctp-teal:      #179299;
+    --ctp-sky:       #04a5e5;
+    --ctp-sapphire:  #209fb5;
+    --ctp-blue:      #1e66f5;
+    --ctp-lavender:  #7287fd;
+
+    --ctp-text:      #4c4f69;
+    --ctp-subtext1:  #5c5f77;
+    --ctp-subtext0:  #6c6f85;
+    --ctp-overlay2:  #7c7f93;
+    --ctp-overlay1:  #8c8fa1;
+    --ctp-overlay0:  #9ca0b0;
+    --ctp-surface2:  #acb0be;
+    --ctp-surface1:  #bcc0cc;
+    --ctp-surface0:  #ccd0da;
+    --ctp-base:      #eff1f5;
+    --ctp-mantle:    #e6e9ef;
+    --ctp-crust:     #dce0e8;
+}
+
+/* ===================================================================
+   2. Vuetify color variable overrides
+   =================================================================== */
+
+html.theme--dark {
+    --color-logo: #c6d0f5 !important;
+    --color-primary: #8caaee !important;
+    --v-primary-base: #8caaee !important;
+    --v-anchor-base: #8caaee !important;
+    --v-warning-base: #ef9f76 !important;
+    --v-success-base: #a6d189 !important;
+    --v-error-base: #e78284 !important;
+    --v-info-base: #81c8be !important;
+}
+
+html.theme--light {
+    --color-logo: #4c4f69 !important;
+    --color-primary: #1e66f5 !important;
+    --v-primary-base: #1e66f5 !important;
+    --v-anchor-base: #1e66f5 !important;
+    --v-warning-base: #fe640b !important;
+    --v-success-base: #40a02b !important;
+    --v-error-base: #d20f39 !important;
+    --v-info-base: #179299 !important;
+}
+
+/* --- Vuetify semantic background overrides (generated theme stylesheet) --- */
+.v-application .primary { background-color: var(--ctp-blue) !important; border-color: var(--ctp-blue) !important; }
+.v-application .primary--text { color: var(--ctp-blue) !important; caret-color: var(--ctp-blue) !important; }
+.v-application .warning { background-color: var(--ctp-peach) !important; border-color: var(--ctp-peach) !important; }
+.v-application .warning--text { color: var(--ctp-peach) !important; caret-color: var(--ctp-peach) !important; }
+.v-application .success { background-color: var(--ctp-green) !important; border-color: var(--ctp-green) !important; }
+.v-application .success--text { color: var(--ctp-green) !important; caret-color: var(--ctp-green) !important; }
+.v-application .error { background-color: var(--ctp-red) !important; border-color: var(--ctp-red) !important; }
+.v-application .error--text { color: var(--ctp-red) !important; caret-color: var(--ctp-red) !important; }
+.v-application .info { background-color: var(--ctp-teal) !important; border-color: var(--ctp-teal) !important; }
+.v-application .info--text { color: var(--ctp-teal) !important; caret-color: var(--ctp-teal) !important; }
+.v-application a { color: var(--ctp-blue) !important; }
+
+/* Force Catppuccin text color over Vuetify's generated theme (#FFFFFF dark / rgba(0,0,0,.87) light) */
+.theme--dark.v-card,
+.theme--dark.v-sheet,
+.theme--dark.v-toolbar,
+.theme--dark .v-card,
+.theme--dark .v-sheet,
+.theme--dark .v-toolbar,
+.theme--light.v-card,
+.theme--light.v-sheet,
+.theme--light.v-toolbar,
+.theme--light .v-card,
+.theme--light .v-sheet,
+.theme--light .v-toolbar {
+    color: var(--ctp-text) !important;
+}
+
+/* ===================================================================
+   3. Application background — Base per style guide
+   =================================================================== */
+
+.v-application {
+    background-color: var(--ctp-base) !important;
+    color: var(--ctp-text) !important;
+}
+
+.v-main {
+    background-color: var(--ctp-base) !important;
+}
+
+/* ===================================================================
+   4. Navigation drawer — Crust (secondary pane)
+   =================================================================== */
+
+.v-navigation-drawer {
+    background-color: var(--ctp-crust) !important;
+    border-right: 1px solid var(--ctp-surface0) !important;
+    border-radius: 0 12px 12px 0 !important;
+}
+
+.v-navigation-drawer .v-list {
+    background-color: transparent !important;
+    padding: 4px 0 !important;
+}
+
+.v-navigation-drawer .v-list-item {
+    color: var(--ctp-subtext1) !important;
+    border-radius: 0 10px 10px 0 !important;
+    margin: 2px 0 !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.v-navigation-drawer .v-list-item:hover {
+    background-color: var(--ctp-surface0) !important;
+    color: var(--ctp-text) !important;
+}
+
+.v-navigation-drawer .v-list-item--active {
+    background-color: var(--ctp-blue) !important;
+    color: var(--ctp-base) !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.v-navigation-drawer .v-list-item--active .v-icon,
+.v-navigation-drawer .v-list-item--active .v-list-item__content {
+    color: var(--ctp-base) !important;
+}
+
+/* ===================================================================
+   5. Cards — Mantle (secondary pane) + design enhancements
+   =================================================================== */
+
+.v-card {
+    background-color: var(--ctp-mantle) !important;
+    border: 1px solid var(--ctp-surface0) !important;
+    border-radius: 12px !important;
+    transition: box-shadow 0.25s ease, transform 0.25s ease !important;
+}
+
+.v-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.v-card .v-card__title {
+    color: var(--ctp-text) !important;
+}
+
+.v-card .v-card__text {
+    color: var(--ctp-subtext1) !important;
+}
+
+/* ===================================================================
+   6. App bar
+   =================================================================== */
+
+.v-app-bar {
+    background-color: var(--ctp-base) !important;
+    border-bottom: 1px solid var(--ctp-surface0) !important;
+}
+
+.v-toolbar__title {
+    color: var(--ctp-text) !important;
+}
+
+/* ===================================================================
+   7. Buttons — rounded with Catppuccin accents
+   =================================================================== */
+
+.v-btn {
+    border-radius: 10px !important;
+    text-transform: none !important;
+    transition: all 0.2s ease !important;
+}
+
+.v-btn.primary,
+.v-btn.v-btn--color-primary {
+    background-color: var(--ctp-blue) !important;
+    color: var(--ctp-base) !important;
+}
+
+.v-btn.success,
+.v-btn.green {
+    background-color: var(--ctp-green) !important;
+    color: var(--ctp-base) !important;
+}
+
+.v-btn.warning,
+.v-btn.orange {
+    background-color: var(--ctp-peach) !important;
+    color: var(--ctp-base) !important;
+}
+
+.v-btn.error,
+.v-btn.red {
+    background-color: var(--ctp-red) !important;
+    color: var(--ctp-base) !important;
+}
+
+.v-btn--outlined {
+    border-color: var(--ctp-surface1) !important;
+    color: var(--ctp-text) !important;
+}
+
+.v-btn--outlined:hover {
+    background-color: var(--ctp-surface0) !important;
+    border-color: var(--ctp-blue) !important;
+}
+
+/* ===================================================================
+   8. Text inputs — Surface 0 bg per style guide
+   =================================================================== */
+
+.v-text-field .v-input__slot {
+    background-color: var(--ctp-surface0) !important;
+    border-radius: 10px !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.v-text-field--outlined fieldset {
+    border-color: var(--ctp-surface1) !important;
+    border-radius: 10px !important;
+}
+
+.v-text-field--outlined:hover fieldset {
+    border-color: var(--ctp-blue) !important;
+}
+
+.v-text-field--focused .v-input__slot,
+.v-text-field--outlined.v-input--is-focused fieldset {
+    border-color: var(--ctp-blue) !important;
+}
+
+.v-text-field input {
+    color: var(--ctp-text) !important;
+}
+
+.v-label {
+    color: var(--ctp-subtext0) !important;
+}
+
+/* ===================================================================
+   9. Select dropdowns
+   =================================================================== */
+
+.v-select .v-input__append-inner .v-icon {
+    color: var(--ctp-subtext1) !important;
+}
+
+.v-menu__content {
+    background-color: var(--ctp-surface0) !important;
+    border: 1px solid var(--ctp-surface1) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+.v-menu__content .v-list-item {
+    border-radius: 8px !important;
+    margin: 2px 6px !important;
+}
+
+.v-menu__content .v-list-item:hover {
+    background-color: var(--ctp-surface1) !important;
+}
+
+/* ===================================================================
+   10. Sliders — Blue track per style guide (primary actions)
+   =================================================================== */
+
+.v-slider__track-background {
+    background-color: var(--ctp-surface0) !important;
+    border-radius: 6px !important;
+}
+
+.v-slider__track-fill {
+    background-color: var(--ctp-blue) !important;
+    border-radius: 6px !important;
+}
+
+.v-slider__thumb {
+    background-color: var(--ctp-blue) !important;
+}
+
+/* ===================================================================
+   11. Tables
+   =================================================================== */
+
+.v-data-table {
+    background-color: var(--ctp-mantle) !important;
+    border-radius: 12px !important;
+}
+
+.v-data-table th {
+    background-color: var(--ctp-surface0) !important;
+    color: var(--ctp-text) !important;
+    font-weight: 600 !important;
+    border-bottom: 2px solid var(--ctp-surface1) !important;
+}
+
+.v-data-table td {
+    color: var(--ctp-subtext1) !important;
+    border-bottom: 1px solid var(--ctp-surface0) !important;
+}
+
+.v-data-table tr:hover {
+    background-color: var(--ctp-surface0) !important;
+}
+
+/* ===================================================================
+   12. Sheets, dialogs, expansion panels
+   =================================================================== */
+
+.v-sheet {
+    background-color: var(--ctp-mantle) !important;
+}
+
+.v-dialog .v-card {
+    background-color: var(--ctp-mantle) !important;
+}
+
+.v-expansion-panel {
+    background-color: var(--ctp-mantle) !important;
+    border-radius: 10px !important;
+    margin: 4px 0 !important;
+}
+
+.v-expansion-panel-header {
+    background-color: var(--ctp-surface0) !important;
+    color: var(--ctp-text) !important;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.v-expansion-panel-content {
+    background-color: var(--ctp-mantle) !important;
+    color: var(--ctp-subtext1) !important;
+}
+
+/* ===================================================================
+   13. Chips, tooltips, snackbars
+   =================================================================== */
+
+.v-chip {
+    background-color: var(--ctp-surface0) !important;
+    color: var(--ctp-text) !important;
+    border-radius: 10px !important;
+}
+
+.v-tooltip .v-overlay__content {
+    background-color: var(--ctp-surface1) !important;
+    color: var(--ctp-text) !important;
+    border-radius: 8px !important;
+}
+
+.v-snackbar .v-snack__wrapper {
+    background-color: var(--ctp-surface1) !important;
+    color: var(--ctp-text) !important;
+    border-radius: 10px !important;
+}
+
+/* ===================================================================
+   14. Tabs
+   =================================================================== */
+
+.v-tabs-bar {
+    background-color: transparent !important;
+}
+
+.v-tab {
+    color: var(--ctp-subtext1) !important;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.v-tab:hover {
+    color: var(--ctp-text) !important;
+    background-color: var(--ctp-surface0) !important;
+}
+
+.v-tab--active {
+    color: var(--ctp-blue) !important;
+}
+
+.v-tabs-slider {
+    background-color: var(--ctp-blue) !important;
+}
+
+.v-tabs-items {
+    background-color: transparent !important;
+}
+
+/* ===================================================================
+   15. Progress bars — Green for progress per style guide (success)
+   =================================================================== */
+
+.v-progress-linear {
+    background-color: var(--ctp-surface0) !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
+}
+
+/* ===================================================================
+   16. Status / semantic colors — per style guide
+       Success = Green, Warnings = Yellow, Errors = Red, Info = Teal
+   =================================================================== */
+
+.v-alert--success {
+    color: var(--ctp-green) !important;
+    background-color: rgba(var(--ctp-green), 0.1) !important;
+}
+
+.v-alert--error {
+    color: var(--ctp-red) !important;
+}
+
+.v-alert--warning {
+    color: var(--ctp-yellow) !important;
+}
+
+.v-alert--info {
+    color: var(--ctp-teal) !important;
+}
+
+/* ===================================================================
+   17. Scrollbars
+   =================================================================== */
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--ctp-mantle);
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--ctp-surface2);
+    border-radius: 6px;
+    border: 2px solid var(--ctp-mantle);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--ctp-overlay0);
+}
+
+/* ===================================================================
+   18. Selection — Overlay 2 at 25% per style guide
+   =================================================================== */
+
+::selection {
+    background-color: var(--ctp-overlay2) !important;
+    color: var(--ctp-text) !important;
+}
+
+/* ===================================================================
+   19. Icon colors — inherit by default, semantic when classed
+   =================================================================== */
+
+.v-icon.primary--text  { color: var(--ctp-blue) !important; }
+.v-icon.success--text  { color: var(--ctp-green) !important; }
+.v-icon.warning--text  { color: var(--ctp-peach) !important; }
+.v-icon.error--text    { color: var(--ctp-red) !important; }
+
+/* ===================================================================
+   20. CodeMirror 5 — per style guide Code Editors section
+       Keyword=Mauve, Strings=Green, Atoms=Red, Comments=Overlay2,
+       Numbers=Peach, Operators=Sky, Functions=Blue, Builtins=Red,
+       Properties=Blue, Tags=Mauve, Types=Yellow, Cursor=Rosewater
+   =================================================================== */
+
+.CodeMirror,
+.vue-codemirror.codemirror {
+    background-color: var(--ctp-base) !important;
+    color: var(--ctp-text) !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--ctp-surface0) !important;
+}
+
+.cm-keyword      { color: var(--ctp-mauve) !important; font-weight: 600 !important; }
+.cm-string       { color: var(--ctp-green) !important; }
+.cm-atom         { color: var(--ctp-red) !important; }
+.cm-number       { color: var(--ctp-peach) !important; }
+.cm-comment      { color: var(--ctp-overlay2) !important; font-style: italic !important; }
+.cm-operator     { color: var(--ctp-sky) !important; }
+.cm-def,
+.cm-function     { color: var(--ctp-blue) !important; }
+.cm-variable,
+.cm-variable-2,
+.cm-variable-3   { color: var(--ctp-text) !important; }
+.cm-builtin,
+.cm-type         { color: var(--ctp-red) !important; }
+.cm-property,
+.cm-attribute    { color: var(--ctp-blue) !important; }
+.cm-tag          { color: var(--ctp-mauve) !important; }
+.cm-meta         { color: var(--ctp-yellow) !important; }
+.cm-qualifier    { color: var(--ctp-mauve) !important; }
+.cm-bracket,
+.cm-punctuation  { color: var(--ctp-overlay2) !important; }
+.cm-link         { color: var(--ctp-blue) !important; text-decoration: underline !important; }
+.cm-header       { color: var(--ctp-blue) !important; font-weight: bold !important; }
+.cm-strong       { color: var(--ctp-yellow) !important; font-weight: bold !important; }
+.cm-em           { color: var(--ctp-green) !important; font-style: italic !important; }
+.cm-error        { color: var(--ctp-red) !important; }
+
+.CodeMirror-activeline-background {
+    background-color: var(--ctp-surface0) !important;
+}
+
+.CodeMirror-selected {
+    background-color: var(--ctp-overlay2) !important;
+    opacity: 0.25;
+}
+
+.CodeMirror-cursor {
+    border-left: 2px solid var(--ctp-rosewater) !important;
+}
+
+.CodeMirror-gutters {
+    background-color: var(--ctp-mantle) !important;
+    border-right: 1px solid var(--ctp-surface0) !important;
+}
+
+.CodeMirror-linenumber {
+    color: var(--ctp-overlay1) !important;
+}
+
+.CodeMirror-matchingbracket {
+    background-color: var(--ctp-surface1) !important;
+    color: var(--ctp-mauve) !important;
+    font-weight: bold !important;
+}
+
+.CodeMirror-nonmatchingbracket {
+    background-color: var(--ctp-surface1) !important;
+    color: var(--ctp-red) !important;
+}
+
+/* ===================================================================
+   21. CodeMirror 6 — same style guide mappings
+   =================================================================== */
+
+.cm-content {
+    color: var(--ctp-text) !important;
+}
+
+.cm-activeLine {
+    background-color: var(--ctp-surface0) !important;
+}
+
+.cm-selectionBackground {
+    background-color: var(--ctp-overlay2) !important;
+    opacity: 0.25;
+}
+
+/* ===================================================================
+   25. Embroidery temperature panel
+   =================================================================== */
+
+.temperature-panel .temperature-panel__embroidery-item {
+    border: 1px solid var(--ctp-surface0) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html.theme--dark .temperature-panel .temperature-panel__embroidery-item {
+    background: linear-gradient(180deg, rgba(115, 121, 148, 0.16) 0%, rgba(65, 69, 89, 0.72) 100%) !important;
+}
+
+html.theme--light .temperature-panel .temperature-panel__embroidery-item {
+    background: linear-gradient(180deg, rgba(204, 208, 218, 0.8) 0%, rgba(230, 233, 239, 0.96) 100%) !important;
+}
+
+.temperature-panel .temperature-panel__embroidery-label,
+.temperature-panel .temperature-panel__embroidery-value {
+    color: var(--ctp-text) !important;
+}
+
+.temperature-panel .temperature-panel__embroidery-meta {
+    color: var(--ctp-overlay1) !important;
+}
+
+.temperature-panel .temperature-panel__embroidery-bar .v-progress-linear__background {
+    opacity: 0.18 !important;
+}
+
+.temperature-panel .temperature-panel__embroidery-bar .v-progress-linear__determinate {
+    border-radius: 999px !important;
+}
+
+/* CM6 dynamic token classes (used in Mainsail's Klipper config editor) */
+.ͼt  { color: var(--ctp-mauve) !important; font-weight: 600 !important; }   /* section headers */
+.ͼ13 { color: var(--ctp-overlay2) !important; font-style: italic !important; } /* comments */
+.ͼp  { color: var(--ctp-blue) !important; }                                  /* property names */
+.ͼy  { color: var(--ctp-green) !important; }                                 /* string values */
+.ͼv  { color: var(--ctp-peach) !important; }                                 /* numbers */
+.ͼo  { color: var(--ctp-sky) !important; }                                   /* operators */
+.ͼn  { color: var(--ctp-red) !important; }                                   /* errors */
+.ͼs  { color: var(--ctp-yellow) !important; }                                /* special */
+.ͼb  { color: var(--ctp-red) !important; }                                   /* builtins */
+.ͼm  { color: var(--ctp-pink) !important; }                                  /* meta */
+.ͼa  { color: var(--ctp-yellow) !important; }                                /* attributes */
+
+/* ===================================================================
+   22. System bar & footer
+   =================================================================== */
+
+.v-system-bar {
+    background-color: var(--ctp-crust) !important;
+    color: var(--ctp-text) !important;
+}
+
+.v-footer {
+    background-color: var(--ctp-mantle) !important;
+    color: var(--ctp-text) !important;
+}
+
+/* ===================================================================
+   23. GCode Studio 2D viewer — Catppuccin palette
+   =================================================================== */
+
+/* Viewer canvas border */
+.gcode-studio-2d .viewer,
+.gcode-studio .viewer {
+    border-color: var(--ctp-surface0) !important;
+}
+
+/* Coordinate overlay */
+html.theme--dark .gcode-studio-2d .coords,
+html.theme--dark .gcode-studio .coords {
+    background: var(--ctp-crust) !important;
+    color: var(--ctp-text) !important;
+}
+
+html.theme--light .gcode-studio-2d .coords,
+html.theme--light .gcode-studio .coords {
+    background: var(--ctp-crust) !important;
+    color: var(--ctp-text) !important;
+}
+
+/* Color picker border */
+.gcode-studio-2d .color-picker,
+.gcode-studio .color-picker {
+    border-color: var(--ctp-surface1) !important;
+}
+
+/* ===================================================================
+   24. GCode Viewer (3D) — Catppuccin palette
+   =================================================================== */
+
+.gcode-viewer-wrapper .viewer,
+.gcodeviewer .viewer {
+    border-color: var(--ctp-surface0) !important;
+}
+
+/* CodeStream active line + selection */
+.cm-activeLine {
+    background-color: var(--ctp-surface0) !important;
+}
+
+.cm-activeLineGutter {
+    background-color: var(--ctp-surface0) !important;
+}
+
+.cm-selectionBackground {
+    background-color: var(--ctp-overlay2) !important;
+    opacity: 0.25;
+}

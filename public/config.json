@@ -1,7 +1,7 @@
 {
     "defaultLocale": "en",
-    "defaultMode": "dark",
-    "defaultTheme": "mainsail",
+    "defaultMode": "light",
+    "defaultTheme": "stitchlab",
     "hostname": null,
     "port": 7125,
     "path": null,
