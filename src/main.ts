@@ -7,6 +7,7 @@ import i18n, { setAndLoadLocale } from '@/plugins/i18n'
 import store from '@/store'
 import router from '@/plugins/router'
 import { WebSocketPlugin } from '@/plugins/webSocketClient'
+import { initWebMCP } from '@/plugins/webmcpIntegration'
 // vue-observe-visibility
 import { ObserveVisibility } from 'vue-observe-visibility'
 //vue-load-image
@@ -81,6 +82,11 @@ const initLoad = async () => {
     const url = store.getters['socket/getWebsocketUrl']
     Vue.use(WebSocketPlugin, { url, store })
     if (store?.state?.instancesDB === 'moonraker') Vue.$socket.connect()
+
+    // Load WebMCP agent integration in dev mode
+    if (import.meta.env.DEV) {
+        initWebMCP(store).catch((e) => window.console.warn('[WebMCP] Init failed:', e))
+    }
 }
 
 initLoad().then(() =>

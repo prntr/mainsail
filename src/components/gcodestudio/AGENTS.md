@@ -1,14 +1,17 @@
 # GCode Studio 2D (Paper.js) - Agent Notes
 
 Purpose
+
 - This file documents the 2D G-Code Studio implementation so other AI/devs can navigate and extend it quickly.
 
 Scope
+
 - Primary component: `mainsail/src/components/gcodestudio/GCodeStudio2D.vue`
 - Related code panel: `mainsail/src/components/gcodeviewer/CodeStream.vue`
 - Routes/page wrapper: `mainsail/src/pages/GCodeStudio.vue`
 
 Key flows
+
 - Load file:
   - Local file input -> `loadGcode(text)`
   - Server files via Moonraker -> `loadFile('gcodes/...')`
@@ -40,6 +43,7 @@ Key flows
   - Resize uses delayed `scheduleResizeAutoFit()` to avoid jitter.
 
 G-Code conventions used here
+
 - TurtleStitch:
   - Uses Z as stitch markers (not height).
   - Many files use only G0 or only G1.
@@ -48,6 +52,7 @@ G-Code conventions used here
   - Stitch points are rendered only at moves followed by Z (or Z-only lines).
 
 Settings keys (store)
+
 - `gui.gcodeStudio.*`
   - `showGrid`, `gridSpacing`, `showJumpStitches`, `showFrameBorder`
   - `showStitchPoints`, `showColorChanges`, `showNeedlePosition`
@@ -61,12 +66,14 @@ Settings keys (store)
 - `gui.gcodeViewer.showGCode` controls the code panel toggle.
 
 UI layout
+
 - Current layout: `Canvas | G-Code | Settings`.
 - Panels are visually aligned to 500px height.
 - Code panel uses CodeMirror read-only mode.
 - Settings panel background now uses the theme background color.
 
 Recent changes
+
 - Added transformed export actions:
   - Export (download)
   - Save to Printer (upload to `gcodes/`)
@@ -76,6 +83,7 @@ Recent changes
 - G-code export now rotates XY and arc I/J, and inserts missing X/Y when rotating.
 
 Common gotchas
+
 - G-Code parser output units: scale by 25.4 when `displayInInch === false`.
 - Path and point visibility depend on scrub position (move index).
 - Avoid resetting view center on resize; use scheduled auto-fit.
@@ -90,12 +98,14 @@ Common gotchas
 - I/J rotation is applied for G2/G3; R arcs remain unchanged.
 
 Suggested verification
+
 - Load TurtleStitch and Ink/Stitch files.
 - Verify stitch points only appear after Z moves.
 - Check scrub play/pause and arrow-key stepping.
 - Confirm auto-fit on resize and panel toggles.
 
 Development outlook
+
 - Multi-object workflow: load multiple drawings, per-object transforms, hide/remove.
 - Accordion G-code panels per drawing with per-object scrub.
 - Combined export with ordering, validation (G90/G91/G92), and bounds checks.

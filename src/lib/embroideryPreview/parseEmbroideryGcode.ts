@@ -67,7 +67,10 @@ const DEFAULT_STITCH_COLOR = '#E76F51'
 const DEFAULT_FEEDRATE = 1200
 
 function normalizeLineEndings(gcode: string): string {
-    return gcode.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\uFEFF/g, '')
+    return gcode
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .replace(/\uFEFF/g, '')
 }
 
 function normalizeGcode(gcode: string): string {

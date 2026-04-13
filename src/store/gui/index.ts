@@ -9,6 +9,8 @@ import {
     defaultPrimaryColor,
     defaultBigThumbnailBackground,
     defaultMode,
+    getStitchlabGcodeStudioPalette,
+    themes,
 } from '@/store/variables'
 
 // load modules
@@ -25,6 +27,30 @@ import { webcams } from '@/store/gui/webcams'
 import { heightmap } from '@/store/gui/heightmap'
 
 export const getDefaultState = (): GuiState => {
+    const defaultThemePrimary = themes.find((theme) => theme.name === defaultTheme)?.colorPrimary ?? defaultPrimaryColor
+    const defaultGcodeStudioPalette = getStitchlabGcodeStudioPalette(defaultMode)
+    const createDashboardLayout = (panels: Array<{ name: string; visible: boolean }>) =>
+        panels.map((panel) => ({ ...panel }))
+    const stitchlabDashboardHiddenPanels = [
+        { name: 'afc', visible: false },
+        { name: 'extruder-control', visible: false },
+        { name: 'led-effects', visible: false },
+        { name: 'miscellaneous', visible: false },
+        { name: 'mmu', visible: false },
+        { name: 'spoolman', visible: false },
+        { name: 'webcam', visible: false },
+    ]
+    const stitchlabDashboardLeftPanels = [
+        { name: 'toolhead-control', visible: true },
+        { name: 'machine-settings', visible: true },
+        { name: 'macros', visible: true },
+    ]
+    const stitchlabDashboardRightPanels = [
+        { name: 'embroidery-control', visible: true },
+        { name: 'miniconsole', visible: true },
+        { name: 'temperature', visible: true },
+    ]
+
     return {
         general: {
             printername: '',
@@ -68,51 +94,25 @@ export const getDefaultState = (): GuiState => {
                 desktop: [],
                 widescreen: [],
             },
-            mobileLayout: [
+            mobileLayout: createDashboardLayout([
                 { name: 'embroidery-control', visible: true },
-                { name: 'webcam', visible: false },
                 { name: 'toolhead-control', visible: true },
+                { name: 'machine-settings', visible: true },
                 { name: 'macros', visible: true },
-                { name: 'machine-settings', visible: true },
-                { name: 'miscellaneous', visible: true },
-                { name: 'temperature', visible: true },
-                { name: 'miniconsole', visible: true },
-            ],
-            tabletLayout1: [
-                { name: 'embroidery-control', visible: true },
-                { name: 'toolhead-control', visible: true },
-                { name: 'macros', visible: true },
-                { name: 'machine-settings', visible: true },
-                { name: 'miscellaneous', visible: true },
-            ],
-            tabletLayout2: [
-                { name: 'temperature', visible: true },
-                { name: 'miniconsole', visible: true },
-            ],
-            desktopLayout1: [
-                { name: 'embroidery-control', visible: true },
-                { name: 'toolhead-control', visible: true },
-                { name: 'machine-settings', visible: true },
-                { name: 'miscellaneous', visible: true },
-            ],
-            desktopLayout2: [
                 { name: 'miniconsole', visible: true },
                 { name: 'temperature', visible: true },
-            ],
-            widescreenLayout1: [
-                { name: 'embroidery-control', visible: true },
-                { name: 'toolhead-control', visible: true },
-                { name: 'macros', visible: true },
-                { name: 'miscellaneous', visible: true },
-            ],
-            widescreenLayout2: [
-                { name: 'temperature', visible: true },
-                { name: 'machine-settings', visible: true },
-            ],
-            widescreenLayout3: [
-                { name: 'webcam', visible: true },
-                { name: 'miniconsole', visible: true },
-            ],
+                ...stitchlabDashboardHiddenPanels,
+            ]),
+            tabletLayout1: createDashboardLayout([...stitchlabDashboardLeftPanels, ...stitchlabDashboardHiddenPanels]),
+            tabletLayout2: createDashboardLayout(stitchlabDashboardRightPanels),
+            desktopLayout1: createDashboardLayout([...stitchlabDashboardLeftPanels, ...stitchlabDashboardHiddenPanels]),
+            desktopLayout2: createDashboardLayout(stitchlabDashboardRightPanels),
+            widescreenLayout1: createDashboardLayout([
+                ...stitchlabDashboardLeftPanels,
+                ...stitchlabDashboardHiddenPanels,
+            ]),
+            widescreenLayout2: createDashboardLayout(stitchlabDashboardRightPanels),
+            widescreenLayout3: [],
         },
         editor: {
             escToClose: true,
@@ -156,6 +156,8 @@ export const getDefaultState = (): GuiState => {
             framePreset: '4x4',
             showGrid: true,
             gridSpacing: 10,
+            lineWidth: 0.1,
+            stitchPointSize: 0.2,
             showStitchPoints: true,
             showJumpStitches: true,
             showColorChanges: true,
@@ -164,10 +166,10 @@ export const getDefaultState = (): GuiState => {
             showTransformedGcode: false,
             rotationDeg: 0,
             rotationPivot: 'design',
-            backgroundColor: '#303446',
-            gridColor: '#414559',
-            frameColor: '#8caaee',
-            stitchColors: ['#E76F51', '#2A9D8F', '#E9C46A', '#264653', '#F4A261'],
+            backgroundColor: defaultGcodeStudioPalette.backgroundColor,
+            gridColor: defaultGcodeStudioPalette.gridColor,
+            frameColor: defaultGcodeStudioPalette.frameColor,
+            stitchColors: [...defaultGcodeStudioPalette.stitchColors],
         },
         wifi: {
             apSsid: '',
@@ -180,7 +182,7 @@ export const getDefaultState = (): GuiState => {
             mode: defaultMode,
             theme: defaultTheme,
             logo: defaultLogoColor,
-            primary: defaultPrimaryColor,
+            primary: defaultThemePrimary,
             displayCancelPrint: false,
             lockSlidersOnTouchDevices: true,
             lockSlidersDelay: 1.5,

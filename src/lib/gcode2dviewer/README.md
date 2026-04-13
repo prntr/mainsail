@@ -24,9 +24,9 @@ const canvas = document.getElementById('myCanvas') as HTMLCanvasElement
 const gcode = 'G0 X0 Y0\nG1 X10 Y10\n...'
 
 const colors = {
-    G0: '#00FF00',   // Travel moves (optional)
-    G1: '#FF0000',   // Linear moves
-    G2G3: '#0000FF'  // Arc moves (optional)
+  G0: '#00FF00', // Travel moves (optional)
+  G1: '#FF0000', // Linear moves
+  G2G3: '#0000FF', // Arc moves (optional)
 }
 
 const viewer = (window as any).GCode2DViewer
@@ -36,6 +36,7 @@ viewer.preview(gcode, colors, canvas)
 ### Color Configuration
 
 The `colors` object supports three properties:
+
 - `G0` - Rapid positioning moves (travel). If omitted, G0 moves won't be displayed.
 - `G1` - Linear interpolation moves (cutting/drawing/stitching).
 - `G2G3` - Circular interpolation (arcs). If omitted, arcs won't be displayed.
@@ -64,6 +65,7 @@ This library is used in `GCodeStudio2DViewer.vue` for embroidery visualization. 
 ### TurtleStitch Color Support
 
 TurtleStitch exports color information as comments:
+
 ```gcode
 ; color r:255 g:0 b:0
 ```
@@ -77,6 +79,7 @@ The viewer parses these comments and renders each color segment separately, comp
 Renders G-code to a canvas element.
 
 **Parameters:**
+
 - `gcode` (string) - The G-code string to visualize
 - `colors` (object) - Color configuration with G0, G1, and/or G2G3 properties
 - `canvas` (HTMLCanvasElement) - The canvas element to render into
@@ -88,6 +91,7 @@ Renders G-code to a canvas element.
 Generates an image from G-code.
 
 **Parameters:**
+
 - `gcode` (string) - The G-code string to visualize
 - `colors` (object) - Color configuration
 - `width` (number) - Image width in pixels

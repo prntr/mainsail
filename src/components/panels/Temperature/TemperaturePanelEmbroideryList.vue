@@ -1,6 +1,9 @@
 <template>
     <div class="temperature-panel__embroidery">
-        <div v-for="item in items" :key="item.key" class="temperature-panel__embroidery-item">
+        <div
+            v-for="item in items"
+            :key="item.key"
+            :class="['temperature-panel__embroidery-item', `temperature-panel__embroidery-item--${item.tone}`]">
             <div class="temperature-panel__embroidery-header">
                 <div class="temperature-panel__embroidery-label">
                     <v-icon small :color="item.iconColor">{{ item.icon }}</v-icon>
@@ -10,7 +13,7 @@
             </div>
             <v-progress-linear
                 class="temperature-panel__embroidery-bar"
-                height="6"
+                height="4"
                 :value="item.progress"
                 :color="item.progressColor" />
             <div
@@ -41,6 +44,8 @@ const EMBROIDERY_WARNING_TEMPERATURE = 70
 const EMBROIDERY_ERROR_TEMPERATURE = 85
 const HOST_SENSOR_TYPES = ['rpi_temperature', 'temperature_host']
 
+type EmbroideryTemperatureTone = 'muted' | 'primary' | 'warning' | 'error'
+
 interface TemperatureSensorValues {
     temperature: number | string
     measured_min_temp: number | string | null
@@ -51,6 +56,7 @@ interface EmbroideryTemperatureItem {
     key: string
     icon: string
     iconColor: string
+    tone: EmbroideryTemperatureTone
     label: string
     temperature: number | null
     temperatureOutput: string
@@ -130,11 +136,13 @@ export default class TemperaturePanelEmbroideryList extends Mixins(BaseMixin) {
         sensor: TemperatureSensorValues | null
     }): EmbroideryTemperatureItem {
         const temperature = this.normalizeNumber(payload.sensor?.temperature)
+        const tone = this.getTemperatureTone(temperature)
 
         return {
             key: payload.key,
             icon: payload.icon,
-            iconColor: this.getTemperatureColor(temperature, true),
+            iconColor: tone === 'muted' ? 'grey' : tone,
+            tone,
             label: payload.label,
             temperature,
             temperatureOutput: temperature === null ? '--°C' : `${temperature}°C`,
@@ -142,7 +150,7 @@ export default class TemperaturePanelEmbroideryList extends Mixins(BaseMixin) {
             measuredMaxTemp: this.formatMeasuredTemperature(payload.sensor?.measured_max_temp),
             progress:
                 temperature === null ? 0 : Math.min(Math.max((temperature / EMBROIDERY_TEMPERATURE_MAX) * 100, 0), 100),
-            progressColor: this.getTemperatureColor(temperature),
+            progressColor: tone === 'muted' ? 'grey' : tone,
         }
     }
 
@@ -174,8 +182,8 @@ export default class TemperaturePanelEmbroideryList extends Mixins(BaseMixin) {
         return output.toFixed(1)
     }
 
-    getTemperatureColor(temperature: number | null, allowMuted = false): string {
-        if (temperature === null) return allowMuted ? 'grey' : 'primary'
+    getTemperatureTone(temperature: number | null): EmbroideryTemperatureTone {
+        if (temperature === null) return 'muted'
         if (temperature >= EMBROIDERY_ERROR_TEMPERATURE) return 'error'
         if (temperature >= EMBROIDERY_WARNING_TEMPERATURE) return 'warning'
 
@@ -187,30 +195,30 @@ export default class TemperaturePanelEmbroideryList extends Mixins(BaseMixin) {
 <style scoped>
 .temperature-panel__embroidery {
     display: grid;
-    gap: 10px;
-    padding: 14px 16px 16px;
+    gap: 8px;
+    padding: 10px 14px 12px;
 }
 
 .temperature-panel__embroidery-item {
     display: grid;
-    gap: 8px;
-    padding: 12px 14px;
-    border-radius: 12px;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 10px;
 }
 
 .temperature-panel__embroidery-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
 }
 
 .temperature-panel__embroidery-label {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     min-width: 0;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .temperature-panel__embroidery-label span {
@@ -221,18 +229,18 @@ export default class TemperaturePanelEmbroideryList extends Mixins(BaseMixin) {
 
 .temperature-panel__embroidery-value {
     flex-shrink: 0;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     line-height: 1;
 }
 
 .temperature-panel__embroidery-bar {
-    border-radius: 999px;
+    border-radius: 4px;
     overflow: hidden;
 }
 
 .temperature-panel__embroidery-meta {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 </style>

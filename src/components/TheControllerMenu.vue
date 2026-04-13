@@ -11,12 +11,7 @@
         :min-width="isMobile ? '100%' : 320">
         <template #activator="{ on, attrs }">
             <v-btn icon tile class="minwidth-0" v-bind="attrs" v-on="on">
-                <v-badge
-                    :value="hasActiveController"
-                    :color="statusColor"
-                    dot
-                    overlap
-                    bordered>
+                <v-badge :value="hasActiveController" :color="statusColor" dot overlap bordered>
                     <v-icon>{{ mdiGamepadVariant }}</v-icon>
                 </v-badge>
             </v-btn>
@@ -100,10 +95,7 @@
                             </v-list-item-subtitle>
                         </v-list-item-content>
                         <v-list-item-action class="my-0">
-                            <v-chip
-                                x-small
-                                :color="peer.active ? 'success' : 'grey'"
-                                text-color="white">
+                            <v-chip x-small :color="peer.active ? 'success' : 'grey'" text-color="white">
                                 {{ peer.active ? $t('App.ControllerMenu.Active') : $t('App.ControllerMenu.Idle') }}
                             </v-chip>
                         </v-list-item-action>
@@ -146,7 +138,11 @@
                             :disabled="!dongleConnected || !dongleInfo.wifi_enabled"
                             @click="togglePairing">
                             <v-icon left small>{{ mdiLinkVariant }}</v-icon>
-                            {{ dongleStatus.pairing_mode ? $t('App.ControllerMenu.PairingOn') : $t('App.ControllerMenu.Pair') }}
+                            {{
+                                dongleStatus.pairing_mode
+                                    ? $t('App.ControllerMenu.PairingOn')
+                                    : $t('App.ControllerMenu.Pair')
+                            }}
                         </v-btn>
                     </v-col>
                 </v-row>
@@ -277,25 +273,29 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
     }
 
     get dongleInfo(): DongleInfo {
-        return this.$store.state.server.controller?.dongle_info ?? {
-            mac: '',
-            firmware_version: '',
-            wifi_enabled: false,
-            controller_count: 0,
-            led_brightness: 0,
-        }
+        return (
+            this.$store.state.server.controller?.dongle_info ?? {
+                mac: '',
+                firmware_version: '',
+                wifi_enabled: false,
+                controller_count: 0,
+                led_brightness: 0,
+            }
+        )
     }
 
     get dongleStatus(): DongleStatus {
-        return this.$store.state.server.controller?.dongle_status ?? {
-            uptime_seconds: 0,
-            packets_rx: 0,
-            packets_tx: 0,
-            crc_errors: 0,
-            link_active: false,
-            pairing_mode: false,
-            rssi: 0,
-        }
+        return (
+            this.$store.state.server.controller?.dongle_status ?? {
+                uptime_seconds: 0,
+                packets_rx: 0,
+                packets_tx: 0,
+                crc_errors: 0,
+                link_active: false,
+                pairing_mode: false,
+                rssi: 0,
+            }
+        )
     }
 
     get peers(): PeerInfo[] {
@@ -359,11 +359,7 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
 
     startService(): void {
         this.$store.dispatch('socket/addLoading', { name: 'controllerStart' })
-        this.$socket.emit(
-            'machine.services.start',
-            { service: 'live_jogd' },
-            { action: 'server/serviceStarted' }
-        )
+        this.$socket.emit('machine.services.start', { service: 'live_jogd' }, { action: 'server/serviceStarted' })
         setTimeout(() => {
             this.$store.dispatch('socket/removeLoading', { name: 'controllerStart' })
         }, 3000)
@@ -371,11 +367,7 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
 
     stopService(): void {
         this.$store.dispatch('socket/addLoading', { name: 'controllerStop' })
-        this.$socket.emit(
-            'machine.services.stop',
-            { service: 'live_jogd' },
-            { action: 'server/serviceStopped' }
-        )
+        this.$socket.emit('machine.services.stop', { service: 'live_jogd' }, { action: 'server/serviceStopped' })
         setTimeout(() => {
             this.$store.dispatch('socket/removeLoading', { name: 'controllerStop' })
         }, 3000)
@@ -383,11 +375,7 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
 
     restartService(): void {
         this.$store.dispatch('socket/addLoading', { name: 'controllerRestart' })
-        this.$socket.emit(
-            'machine.services.restart',
-            { service: 'live_jogd' },
-            { action: 'server/serviceRestarted' }
-        )
+        this.$socket.emit('machine.services.restart', { service: 'live_jogd' }, { action: 'server/serviceRestarted' })
         setTimeout(() => {
             this.$store.dispatch('socket/removeLoading', { name: 'controllerRestart' })
         }, 3000)

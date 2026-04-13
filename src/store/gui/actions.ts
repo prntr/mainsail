@@ -3,7 +3,7 @@ import { ActionTree } from 'vuex'
 import { GuiState, GuiStateLayoutoption } from '@/store/gui/types'
 import { RootState } from '@/store/types'
 import { getDefaultState } from './index'
-import { themeDir } from '@/store/variables'
+import { normalizeThemePrimarySetting, themeDir } from '@/store/variables'
 
 export const actions: ActionTree<GuiState, RootState> = {
     reset({ commit, dispatch }) {
@@ -108,6 +108,19 @@ export const actions: ActionTree<GuiState, RootState> = {
             })
 
             const theme = payload.value?.uiSettings?.theme ?? defaultState.uiSettings.theme
+            const storedPrimarySetting = payload.value?.uiSettings?.primary
+
+            if (theme === 'stitchlab' && typeof storedPrimarySetting === 'string') {
+                const normalizedPrimarySetting = normalizeThemePrimarySetting(theme, storedPrimarySetting)
+
+                if (normalizedPrimarySetting !== storedPrimarySetting) {
+                    if (!payload.value.uiSettings) payload.value.uiSettings = {}
+
+                    payload.value.uiSettings.primary = normalizedPrimarySetting
+                    dispatch('saveSetting', { name: 'uiSettings.primary', value: normalizedPrimarySetting })
+                }
+            }
+
             if (theme === 'stitchlab') {
                 layouts.forEach((layout) => {
                     const defaultLayout = defaultState.dashboard[layout as keyof typeof defaultState.dashboard]

@@ -35,7 +35,7 @@ import TheUpdateDialog from '@/components/TheUpdateDialog.vue'
 import TheConnectingDialog from '@/components/TheConnectingDialog.vue'
 import TheSelectPrinterDialog from '@/components/TheSelectPrinterDialog.vue'
 import TheEditor from '@/components/TheEditor.vue'
-import { panelToolbarHeight, topbarHeight, navigationItemHeight } from '@/store/variables'
+import { navigationItemHeight, panelToolbarHeight, resolveThemePrimaryColor, topbarHeight } from '@/store/variables'
 import TheTimelapseRenderingSnackbar from '@/components/TheTimelapseRenderingSnackbar.vue'
 import TheFullscreenUpload from '@/components/TheFullscreenUpload.vue'
 import TheUploadSnackbar from '@/components/TheUploadSnackbar.vue'
@@ -123,7 +123,7 @@ export default class App extends Mixins(BaseMixin, ThemeMixin) {
     }
 
     get primaryColor(): string {
-        return this.$store.state.gui.uiSettings.primary
+        return resolveThemePrimaryColor(this.themeName, this.mode, this.$store.state.gui.uiSettings.primary)
     }
 
     get warningColor(): string {
@@ -148,6 +148,8 @@ export default class App extends Mixins(BaseMixin, ThemeMixin) {
         const vars: { [key: string]: string } = {
             '--v-btn-text-primary': this.primaryTextColor,
             '--color-primary': this.primaryColor,
+            '--v-primary-base': this.primaryColor,
+            '--v-anchor-base': this.primaryColor,
             '--color-warning': this.warningColor,
             '--panel-toolbar-icon-btn-width': panelToolbarHeight + 'px',
             '--panel-toolbar-text-btn-height': panelToolbarHeight + 'px',
@@ -218,10 +220,15 @@ export default class App extends Mixins(BaseMixin, ThemeMixin) {
         this.$socket.emit('server.files.metadata', { filename: newVal }, { action: 'files/getMetadataCurrentFile' })
     }
 
-    @Watch('primaryColor')
+    @Watch('primaryColor', { immediate: true })
     primaryColorChanged(newVal: string): void {
         this.$nextTick(() => {
             this.$vuetify.theme.currentTheme.primary = newVal
+
+            const doc = document.documentElement
+            doc.style.setProperty('--color-primary', newVal, 'important')
+            doc.style.setProperty('--v-primary-base', newVal, 'important')
+            doc.style.setProperty('--v-anchor-base', newVal, 'important')
         })
     }
 

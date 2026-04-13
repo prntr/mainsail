@@ -11,8 +11,8 @@
                     {{ currentFilename }}
                 </span>
                 <span class="embroidery-preview__stats text--disabled">
-                    {{ $t('EmbroideryPreview.Stitch') }} {{ currentStitchIndex }} / {{ stitchCount }}
-                    &middot; {{ progressPercent }}%
+                    {{ $t('EmbroideryPreview.Stitch') }} {{ currentStitchIndex }} / {{ stitchCount }} &middot;
+                    {{ progressPercent }}%
                 </span>
             </div>
         </div>
@@ -27,6 +27,7 @@ import { parseEmbroideryGcode, ParsedEmbroidery, RenderLine } from '@/lib/embroi
 import gcodeToGeometryUrl from '@/lib/gcode2dviewer/gcodetogeometry.min.js?url'
 import { mdiFileOutline } from '@mdi/js'
 import { escapePath } from '@/plugins/helpers'
+import { getStitchlabGcodeStudioPalette } from '@/store/variables'
 
 @Component({})
 export default class EmbroideryPreview extends Mixins(BaseMixin) {
@@ -75,11 +76,25 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
         return this.$store.state.gui.gcodeStudio?.designOffsetY ?? 0
     }
 
+    get isStitchlabTheme(): boolean {
+        return (this.$store.state.gui.uiSettings?.theme ?? '') === 'stitchlab'
+    }
+
+    get themeMode(): 'dark' | 'light' {
+        return this.$vuetify.theme.dark ? 'dark' : 'light'
+    }
+
+    get stitchlabPalette() {
+        return getStitchlabGcodeStudioPalette(this.themeMode)
+    }
+
     get frameColor(): string {
+        if (this.isStitchlabTheme) return this.stitchlabPalette.frameColor
         return this.$store.state.gui.gcodeStudio?.frameColor ?? '#8caaee'
     }
 
     get stitchColors(): string[] {
+        if (this.isStitchlabTheme) return this.stitchlabPalette.stitchColors
         return this.$store.state.gui.gcodeStudio?.stitchColors ?? ['#E76F51']
     }
 
@@ -303,8 +318,8 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
             const frameLeft = cx + (0 - vcx) * scale
             const frameTop = cy - (fh - vcy) * scale
             ctx.strokeStyle = this.frameColor
-            ctx.lineWidth = 1.5
-            ctx.setLineDash([6, 4])
+            ctx.lineWidth = Math.max(0.9, Math.min(1.2, scale * 0.12))
+            ctx.setLineDash([4, 3])
             ctx.strokeRect(frameLeft, frameTop, fw * scale, fh * scale)
             ctx.setLineDash([])
         }
@@ -329,13 +344,16 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
         renderLines: RenderLine[],
         treatG0AsStitch: boolean,
         upToIndex: number,
-        vcx: number, vcy: number,
+        vcx: number,
+        vcy: number,
         scale: number,
-        cx: number, cy: number,
+        cx: number,
+        cy: number,
         faded: boolean
     ): void {
         const startIndex = faded ? this.filePositionToMoveIndex(this.filePosition) + 1 : 0
         const endIndex = faded ? renderLines.length : Math.min(upToIndex + 1, renderLines.length)
+        const threadWidth = Math.max(0.7, Math.min(1.2, scale * 0.35))
 
         let currentColor = ''
         let currentFaded = faded
@@ -353,7 +371,7 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
             }
 
             ctx.strokeStyle = faded ? this.fadeColor(color, 0.2) : color
-            ctx.lineWidth = faded ? 0.8 : 1.5
+            ctx.lineWidth = faded ? Math.max(0.6, threadWidth * 0.85) : threadWidth
             ctx.beginPath()
 
             const from = this.toCanvas(rl.line.start, vcx, vcy, scale, cx, cy)
@@ -375,32 +393,28 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
         }
     }
 
-    drawNeedle(
-        ctx: CanvasRenderingContext2D,
-        vcx: number, vcy: number,
-        scale: number,
-        cx: number, cy: number
-    ): void {
+    drawNeedle(ctx: CanvasRenderingContext2D, vcx: number, vcy: number, scale: number, cx: number, cy: number): void {
         const x = this.toolheadPosition[0] ?? 0
         const y = this.toolheadPosition[1] ?? 0
         const pos = this.toCanvas({ x, y }, vcx, vcy, scale, cx, cy)
 
         const r = 4
+        const markerColor = this.frameColor
         // Outer circle
         ctx.beginPath()
         ctx.arc(pos.x, pos.y, r + 1, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
+        ctx.fillStyle = this.fadeColor(markerColor, 0.22)
         ctx.fill()
 
         // Inner dot
         ctx.beginPath()
         ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2)
-        ctx.fillStyle = '#ffffff'
+        ctx.fillStyle = markerColor
         ctx.fill()
 
         // Crosshair lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'
-        ctx.lineWidth = 1
+        ctx.strokeStyle = this.fadeColor(markerColor, 0.7)
+        ctx.lineWidth = 0.7
         ctx.beginPath()
         ctx.moveTo(pos.x - r * 2.5, pos.y)
         ctx.lineTo(pos.x - r - 1, pos.y)
@@ -415,9 +429,11 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
 
     toCanvas(
         pt: { x: number; y: number },
-        vcx: number, vcy: number,
+        vcx: number,
+        vcy: number,
         scale: number,
-        cx: number, cy: number
+        cx: number,
+        cy: number
     ): { x: number; y: number } {
         // Map design coordinates to canvas, centered on the combined view center
         const x = pt.x + this.designOffsetX
@@ -464,8 +480,10 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
     &__canvas-wrapper {
         position: relative;
         width: 100%;
-        height: 200px;
-        background-color: var(--v-card-base, #1e1e2e);
+        height: 300px;
+        background-color: var(--stitchlab-preview-bg, var(--ctp-crust, var(--v-card-base, #d6dae2)));
+        border: 1px solid var(--ctp-surface0, rgba(128, 128, 128, 0.25));
+        border-radius: 8px;
     }
 
     &__canvas {

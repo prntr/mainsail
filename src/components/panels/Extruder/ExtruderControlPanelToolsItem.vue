@@ -10,6 +10,7 @@ import { Component, Mixins, Prop } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import ControlMixin from '@/components/mixins/control'
 import { ServerSpoolmanStateSpool } from '@/store/server/spoolman/types'
+import { resolveThemePrimaryColor } from '@/store/variables'
 
 @Component({
     components: {},
@@ -52,7 +53,11 @@ export default class ExtruderControlPanel extends Mixins(BaseMixin, ControlMixin
     }
 
     get primaryColor(): string {
-        return this.$store.state.gui.uiSettings.primary
+        return resolveThemePrimaryColor(
+            this.$store.getters['gui/theme'],
+            this.$store.state.gui.uiSettings.mode,
+            this.$store.state.gui.uiSettings.primary
+        )
     }
 
     get primaryTextColor(): string {

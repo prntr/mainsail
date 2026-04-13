@@ -146,6 +146,7 @@ import StatusPanelExcludeObject from '@/components/panels/Status/ExcludeObject.v
 import StatusPanelPrintstatusThumbnail from '@/components/panels/Status/PrintstatusThumbnail.vue'
 import StatusPanelPauseAtLayerDialog from '@/components/panels/Status/PauseAtLayerDialog.vue'
 import EmbroideryPreview from '@/components/panels/Status/EmbroideryPreview.vue'
+import { needleIcon } from '@/components/icons/needleIcon'
 import Panel from '@/components/ui/Panel.vue'
 import {
     mdiAlertOutline,
@@ -159,7 +160,6 @@ import {
     mdiMessageProcessingOutline,
     mdiPause,
     mdiPlay,
-    mdiPrinter,
     mdiSelectionRemove,
     mdiSpeedometer,
     mdiStop,
@@ -320,7 +320,7 @@ export default class StatusPanel extends Mixins(BaseMixin) {
             {
                 text: this.$t('Panels.StatusPanel.ReprintJob'),
                 color: 'primary',
-                icon: mdiPrinter,
+                icon: needleIcon,
                 loadingName: 'statusPrintReprint',
                 status: () => ['error', 'complete', 'cancelled'].includes(this.printer_state),
                 click: this.btnReprintJob,

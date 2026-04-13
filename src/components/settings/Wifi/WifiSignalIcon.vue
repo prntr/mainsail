@@ -4,7 +4,17 @@
 
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { mdiWifi, mdiWifiStrength1, mdiWifiStrength2, mdiWifiStrength3, mdiWifiStrength4, mdiWifiStrength1Lock, mdiWifiStrength2Lock, mdiWifiStrength3Lock, mdiWifiStrength4Lock } from '@mdi/js'
+import {
+    mdiWifi,
+    mdiWifiStrength1,
+    mdiWifiStrength2,
+    mdiWifiStrength3,
+    mdiWifiStrength4,
+    mdiWifiStrength1Lock,
+    mdiWifiStrength2Lock,
+    mdiWifiStrength3Lock,
+    mdiWifiStrength4Lock,
+} from '@mdi/js'
 
 @Component
 export default class WifiSignalIcon extends Vue {

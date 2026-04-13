@@ -82,6 +82,9 @@ html.theme--dark {
     --ctp-base:      #303446;
     --ctp-mantle:    #292c3c;
     --ctp-crust:     #232634;
+    --stitchlab-preview-bg: #1f2230;
+    --stitchlab-code-bg: #232634;
+    --stitchlab-code-gutter-bg: #1f2230;
 }
 
 html.theme--light {
@@ -113,6 +116,9 @@ html.theme--light {
     --ctp-base:      #eff1f5;
     --ctp-mantle:    #e6e9ef;
     --ctp-crust:     #dce0e8;
+    --stitchlab-preview-bg: #d6dae2;
+    --stitchlab-code-bg: #dce0e8;
+    --stitchlab-code-gutter-bg: #d6dae2;
 }
 
 /* ===================================================================
@@ -142,8 +148,8 @@ html.theme--light {
 }
 
 /* --- Vuetify semantic background overrides (generated theme stylesheet) --- */
-.v-application .primary { background-color: var(--ctp-blue) !important; border-color: var(--ctp-blue) !important; }
-.v-application .primary--text { color: var(--ctp-blue) !important; caret-color: var(--ctp-blue) !important; }
+.v-application .primary { background-color: var(--color-primary) !important; border-color: var(--color-primary) !important; }
+.v-application .primary--text { color: var(--color-primary) !important; caret-color: var(--color-primary) !important; }
 .v-application .warning { background-color: var(--ctp-peach) !important; border-color: var(--ctp-peach) !important; }
 .v-application .warning--text { color: var(--ctp-peach) !important; caret-color: var(--ctp-peach) !important; }
 .v-application .success { background-color: var(--ctp-green) !important; border-color: var(--ctp-green) !important; }
@@ -152,7 +158,7 @@ html.theme--light {
 .v-application .error--text { color: var(--ctp-red) !important; caret-color: var(--ctp-red) !important; }
 .v-application .info { background-color: var(--ctp-teal) !important; border-color: var(--ctp-teal) !important; }
 .v-application .info--text { color: var(--ctp-teal) !important; caret-color: var(--ctp-teal) !important; }
-.v-application a { color: var(--ctp-blue) !important; }
+.v-application a { color: var(--v-anchor-base, var(--color-primary)) !important; }
 
 /* Force Catppuccin text color over Vuetify's generated theme (#FFFFFF dark / rgba(0,0,0,.87) light) */
 .theme--dark.v-card,
@@ -211,7 +217,7 @@ html.theme--light {
 }
 
 .v-navigation-drawer .v-list-item--active {
-    background-color: var(--ctp-blue) !important;
+    background-color: var(--color-primary) !important;
     color: var(--ctp-base) !important;
     font-weight: 600 !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
@@ -270,7 +276,7 @@ html.theme--light {
 
 .v-btn.primary,
 .v-btn.v-btn--color-primary {
-    background-color: var(--ctp-blue) !important;
+    background-color: var(--color-primary) !important;
     color: var(--ctp-base) !important;
 }
 
@@ -292,6 +298,12 @@ html.theme--light {
     color: var(--ctp-base) !important;
 }
 
+.embroidery-control-panel .embroidery-control-panel__zero-btn:not(.v-btn--disabled) {
+    background-color: var(--ctp-yellow) !important;
+    border-color: var(--ctp-yellow) !important;
+    color: var(--ctp-base) !important;
+}
+
 .v-btn--outlined {
     border-color: var(--ctp-surface1) !important;
     color: var(--ctp-text) !important;
@@ -299,7 +311,7 @@ html.theme--light {
 
 .v-btn--outlined:hover {
     background-color: var(--ctp-surface0) !important;
-    border-color: var(--ctp-blue) !important;
+    border-color: var(--color-primary) !important;
 }
 
 /* ===================================================================
@@ -318,12 +330,12 @@ html.theme--light {
 }
 
 .v-text-field--outlined:hover fieldset {
-    border-color: var(--ctp-blue) !important;
+    border-color: var(--color-primary) !important;
 }
 
 .v-text-field--focused .v-input__slot,
 .v-text-field--outlined.v-input--is-focused fieldset {
-    border-color: var(--ctp-blue) !important;
+    border-color: var(--color-primary) !important;
 }
 
 .v-text-field input {
@@ -368,12 +380,12 @@ html.theme--light {
 }
 
 .v-slider__track-fill {
-    background-color: var(--ctp-blue) !important;
+    background-color: var(--color-primary) !important;
     border-radius: 6px !important;
 }
 
 .v-slider__thumb {
-    background-color: var(--ctp-blue) !important;
+    background-color: var(--color-primary) !important;
 }
 
 /* ===================================================================
@@ -471,11 +483,11 @@ html.theme--light {
 }
 
 .v-tab--active {
-    color: var(--ctp-blue) !important;
+    color: var(--color-primary) !important;
 }
 
 .v-tabs-slider {
-    background-color: var(--ctp-blue) !important;
+    background-color: var(--color-primary) !important;
 }
 
 .v-tabs-items {
@@ -551,7 +563,7 @@ html.theme--light {
    19. Icon colors — inherit by default, semantic when classed
    =================================================================== */
 
-.v-icon.primary--text  { color: var(--ctp-blue) !important; }
+.v-icon.primary--text  { color: var(--color-primary) !important; }
 .v-icon.success--text  { color: var(--ctp-green) !important; }
 .v-icon.warning--text  { color: var(--ctp-peach) !important; }
 .v-icon.error--text    { color: var(--ctp-red) !important; }
@@ -565,10 +577,10 @@ html.theme--light {
 
 .CodeMirror,
 .vue-codemirror.codemirror {
-    background-color: var(--ctp-base) !important;
+    background-color: var(--gcode-editor-pane-bg, var(--stitchlab-code-bg, var(--ctp-crust))) !important;
     color: var(--ctp-text) !important;
     border-radius: 10px !important;
-    border: 1px solid var(--ctp-surface0) !important;
+    border: 1px solid var(--gcode-editor-divider-color, var(--ctp-surface0)) !important;
 }
 
 .cm-keyword      { color: var(--ctp-mauve) !important; font-weight: 600 !important; }
@@ -598,7 +610,7 @@ html.theme--light {
 .cm-error        { color: var(--ctp-red) !important; }
 
 .CodeMirror-activeline-background {
-    background-color: var(--ctp-surface0) !important;
+    background-color: var(--gcode-editor-active-line-bg, var(--ctp-surface0)) !important;
 }
 
 .CodeMirror-selected {
@@ -611,12 +623,12 @@ html.theme--light {
 }
 
 .CodeMirror-gutters {
-    background-color: var(--ctp-mantle) !important;
-    border-right: 1px solid var(--ctp-surface0) !important;
+    background-color: var(--gcode-editor-gutter-bg, var(--stitchlab-code-gutter-bg, var(--ctp-crust))) !important;
+    border-right: 1px solid var(--gcode-editor-divider-color, var(--ctp-surface0)) !important;
 }
 
 .CodeMirror-linenumber {
-    color: var(--ctp-overlay1) !important;
+    color: var(--gcode-editor-line-number-color, var(--ctp-overlay1)) !important;
 }
 
 .CodeMirror-matchingbracket {
@@ -634,17 +646,103 @@ html.theme--light {
    21. CodeMirror 6 — same style guide mappings
    =================================================================== */
 
+.cm-editor,
+.cm-scroller {
+    background-color: var(--gcode-editor-pane-bg, var(--stitchlab-code-bg, var(--ctp-crust))) !important;
+}
+
+.cm-gutters {
+    background-color: var(--gcode-editor-gutter-bg, var(--stitchlab-code-gutter-bg, var(--ctp-crust))) !important;
+    border-right: 1px solid var(--gcode-editor-divider-color, var(--ctp-surface0)) !important;
+}
+
 .cm-content {
     color: var(--ctp-text) !important;
 }
 
 .cm-activeLine {
-    background-color: var(--ctp-surface0) !important;
+    background-color: var(--gcode-editor-active-line-bg, var(--ctp-surface0)) !important;
+}
+
+.cm-gutterElement {
+    color: var(--gcode-editor-line-number-color, var(--ctp-overlay1)) !important;
 }
 
 .cm-selectionBackground {
     background-color: var(--ctp-overlay2) !important;
     opacity: 0.25;
+}
+
+/* G-code stream parser tokens */
+.gcode-editor .cm-namespace,
+.gcode-editor .cm-name {
+    color: var(--ctp-mauve) !important;
+    font-weight: 600 !important;
+}
+
+.gcode-editor .cm-className,
+.gcode-editor .cm-propertyName {
+    color: var(--ctp-blue) !important;
+}
+
+.gcode-editor .cm-variableName,
+.gcode-editor .cm-variable-2 {
+    color: var(--ctp-lavender) !important;
+}
+
+.gcode-editor .cm-tag {
+    color: var(--ctp-sky) !important;
+}
+
+.gcode-editor .cm-gcode-line-word {
+    color: var(--ctp-overlay1) !important;
+    font-weight: 600 !important;
+}
+
+.gcode-editor .cm-gcode-program-word {
+    color: var(--ctp-sapphire) !important;
+    font-weight: 600 !important;
+}
+
+.gcode-editor .cm-gcode-command-word {
+    color: var(--ctp-mauve) !important;
+    font-weight: 600 !important;
+}
+
+.gcode-editor .cm-gcode-axis-x {
+    color: var(--ctp-red) !important;
+}
+
+.gcode-editor .cm-gcode-axis-y {
+    color: var(--ctp-green) !important;
+}
+
+.gcode-editor .cm-gcode-axis-z {
+    color: var(--ctp-blue) !important;
+}
+
+.gcode-editor .cm-gcode-axis-e {
+    color: var(--ctp-pink) !important;
+}
+
+.gcode-editor .cm-gcode-feed-word {
+    color: var(--ctp-peach) !important;
+}
+
+.gcode-editor .cm-gcode-spindle-word {
+    color: var(--ctp-yellow) !important;
+}
+
+.gcode-editor .cm-gcode-tool-word {
+    color: var(--ctp-teal) !important;
+}
+
+.gcode-editor .cm-gcode-parameter-word {
+    color: var(--ctp-lavender) !important;
+}
+
+.gcode-editor .cm-gcode-variable-word {
+    color: var(--ctp-rosewater) !important;
 }
 
 /* ===================================================================
@@ -653,15 +751,15 @@ html.theme--light {
 
 .temperature-panel .temperature-panel__embroidery-item {
     border: 1px solid var(--ctp-surface0) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    box-shadow: none !important;
 }
 
 html.theme--dark .temperature-panel .temperature-panel__embroidery-item {
-    background: linear-gradient(180deg, rgba(115, 121, 148, 0.16) 0%, rgba(65, 69, 89, 0.72) 100%) !important;
+    background: rgba(65, 69, 89, 0.44) !important;
 }
 
 html.theme--light .temperature-panel .temperature-panel__embroidery-item {
-    background: linear-gradient(180deg, rgba(204, 208, 218, 0.8) 0%, rgba(230, 233, 239, 0.96) 100%) !important;
+    background: rgba(230, 233, 239, 0.78) !important;
 }
 
 .temperature-panel .temperature-panel__embroidery-label,
@@ -673,12 +771,22 @@ html.theme--light .temperature-panel .temperature-panel__embroidery-item {
     color: var(--ctp-overlay1) !important;
 }
 
+.temperature-panel .temperature-panel__embroidery-item--muted .temperature-panel__embroidery-value {
+    color: var(--ctp-overlay1) !important;
+}
+
+.temperature-panel .temperature-panel__embroidery-bar {
+    background-color: var(--ctp-surface0) !important;
+    border-radius: 4px !important;
+}
+
 .temperature-panel .temperature-panel__embroidery-bar .v-progress-linear__background {
-    opacity: 0.18 !important;
+    opacity: 0.14 !important;
 }
 
 .temperature-panel .temperature-panel__embroidery-bar .v-progress-linear__determinate {
-    border-radius: 999px !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
 }
 
 /* CM6 dynamic token classes (used in Mainsail's Klipper config editor) */
@@ -715,6 +823,7 @@ html.theme--light .temperature-panel .temperature-panel__embroidery-item {
 /* Viewer canvas border */
 .gcode-studio-2d .viewer,
 .gcode-studio .viewer {
+    background-color: var(--stitchlab-code-gutter-bg, var(--ctp-crust)) !important;
     border-color: var(--ctp-surface0) !important;
 }
 

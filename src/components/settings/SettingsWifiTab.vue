@@ -6,12 +6,7 @@
                 <h3 class="text-h5 mb-3">{{ $t('Settings.WifiTab.Wifi') }}</h3>
 
                 <!-- Connection Status -->
-                <v-alert
-                    :type="statusAlertType"
-                    :icon="statusIcon"
-                    text
-                    dense
-                    class="mb-4">
+                <v-alert :type="statusAlertType" :icon="statusIcon" text dense class="mb-4">
                     <div class="d-flex align-center justify-space-between">
                         <div>
                             <strong>{{ statusText }}</strong>
@@ -52,10 +47,7 @@
 
                     <v-list v-if="wifiProfiles.length" dense class="py-0">
                         <draggable v-model="sortedProfiles" handle=".drag-handle" @end="onProfileReorder">
-                            <v-list-item
-                                v-for="profile in sortedProfiles"
-                                :key="profile.name"
-                                class="px-0">
+                            <v-list-item v-for="profile in sortedProfiles" :key="profile.name" class="px-0">
                                 <v-list-item-icon class="drag-handle mr-2" style="cursor: grab">
                                     <v-icon small>{{ mdiDrag }}</v-icon>
                                 </v-list-item-icon>
@@ -159,9 +151,7 @@
                         </v-btn>
                     </div>
 
-                    <settings-row
-                        :title="$t('Settings.WifiTab.ApUrl')"
-                        :sub-title="$t('Settings.WifiTab.ApUrlHint')">
+                    <settings-row :title="$t('Settings.WifiTab.ApUrl')" :sub-title="$t('Settings.WifiTab.ApUrlHint')">
                         <div class="d-flex flex-column align-end">
                             <a v-if="apAccessUrl" :href="apAccessUrl" target="_blank" rel="noopener">
                                 {{ apAccessUrl }}
@@ -174,12 +164,7 @@
                     <v-divider class="my-2" />
 
                     <settings-row :title="$t('Settings.WifiTab.ApSsid')">
-                        <v-text-field
-                            v-model="apSsidEditable"
-                            dense
-                            outlined
-                            hide-details
-                            style="max-width: 200px" />
+                        <v-text-field v-model="apSsidEditable" dense outlined hide-details style="max-width: 200px" />
                     </settings-row>
                     <v-divider class="my-2" />
                     <settings-row :title="$t('Settings.WifiTab.ApPassword')">

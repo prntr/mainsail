@@ -1,5 +1,10 @@
 import { ActionTree } from 'vuex'
-import { ServerControllerState, ControllerDongleInfo, ControllerDongleStatus, ControllerPeerInfo } from '@/store/server/controller/types'
+import {
+    ServerControllerState,
+    ControllerDongleInfo,
+    ControllerDongleStatus,
+    ControllerPeerInfo,
+} from '@/store/server/controller/types'
 import { RootState } from '@/store/types'
 import { getControllerWebSocket } from '@/plugins/controllerWebSocket'
 
@@ -22,16 +27,19 @@ export const actions: ActionTree<ServerControllerState, RootState> = {
 
     // Called when live_jogd WebSocket disconnects
     onDisconnect({ commit }) {
-        commit('reset')  // Reset all state to defaults when WebSocket disconnects
+        commit('reset') // Reset all state to defaults when WebSocket disconnects
     },
 
     // Handle status update from live_jogd WebSocket
-    onStatusUpdate({ commit }, payload: {
-        dongle_connected: boolean
-        dongle_info?: ControllerDongleInfo
-        dongle_status?: ControllerDongleStatus
-        peers?: ControllerPeerInfo[]
-    }) {
+    onStatusUpdate(
+        { commit },
+        payload: {
+            dongle_connected: boolean
+            dongle_info?: ControllerDongleInfo
+            dongle_status?: ControllerDongleStatus
+            peers?: ControllerPeerInfo[]
+        }
+    ) {
         commit('setDongleConnected', payload.dongle_connected)
 
         // Clear peers when dongle is not connected

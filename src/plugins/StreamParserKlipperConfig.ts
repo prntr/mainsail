@@ -249,6 +249,7 @@ export const klipper_config: StreamParser<any> = {
                 if (stream.sol() || stream.eol()) {
                     state.gcode = false
                     state.gcodeZeroPos = null
+                    state.messageToEnd = false
                     return null
                 }
 
@@ -309,6 +310,7 @@ export const klipper_config: StreamParser<any> = {
             state.pair = false
             state.gcode = false
             state.was = false
+            state.messageToEnd = false
         }
 
         if (!state.pair && !state.gcode && stream.sol()) {
@@ -353,6 +355,7 @@ export const klipper_config: StreamParser<any> = {
             was: false,
             gcode: false,
             klipperMacro: false,
+            messageToEnd: false,
             gcodeZeroPos: null,
             klipperMacroJinja: false,
             klipperMacroJinjaHighlightNext: false,
@@ -372,6 +375,7 @@ interface StreamParserKlipperConfigState {
     gcode: boolean
     gcodeZeroPos: number | null
     klipperMacro: boolean
+    messageToEnd: boolean
     klipperMacroJinja: boolean
     klipperMacroJinjaHighlightNext: boolean // Highlight next element if no space follows curent keyword
     klipperMacroJinjaBraceStack: string[] // Should these two stacks be combined for overhead / aesthetics?

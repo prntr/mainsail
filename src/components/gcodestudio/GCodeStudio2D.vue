@@ -2,17 +2,37 @@
     <div>
         <panel :title="panelTitle" :icon="mdiNeedle" card-class="gcode-studio-panel" :margin-bottom="false">
             <template #buttons>
-                <v-btn icon tile @click="resetView" :title="$t('GCodeStudio.TopView')">
+                <v-btn icon tile :title="$t('GCodeStudio.TopView')" @click="resetView">
                     <v-icon>{{ mdiCameraRetake }}</v-icon>
                 </v-btn>
-                <v-btn icon tile @click="fitToFrame" :title="$t('GCodeStudio.FitToFrame')">
+                <v-btn icon tile :title="$t('GCodeStudio.FitToFrame')" @click="fitToFrame">
                     <v-icon>{{ mdiFitToScreen }}</v-icon>
                 </v-btn>
-                <v-btn icon tile :disabled="!loadedFile" :title="$t('GCodeStudio.CenterDesign')" @click="centerDesignInFrame">
+                <v-btn
+                    icon
+                    tile
+                    :disabled="!loadedFile"
+                    :title="$t('GCodeStudio.CenterDesign')"
+                    @click="centerDesignInFrame">
                     <v-icon>{{ mdiArrowExpandAll }}</v-icon>
                 </v-btn>
-                <v-btn icon tile :disabled="!loadedFile" :color="moveMode ? 'primary' : ''" :title="$t('GCodeStudio.MoveMode')" @click="moveMode = !moveMode">
+                <v-btn
+                    icon
+                    tile
+                    :disabled="!loadedFile || editMode"
+                    :color="moveMode ? 'primary' : ''"
+                    :title="$t('GCodeStudio.MoveMode')"
+                    @click="moveMode = !moveMode">
                     <v-icon>{{ mdiCursorMove }}</v-icon>
+                </v-btn>
+                <v-btn
+                    icon
+                    tile
+                    :disabled="!loadedFile || !showGCode"
+                    :color="editMode ? 'primary' : ''"
+                    :title="$t('GCodeStudio.EditMode')"
+                    @click="toggleEditMode">
+                    <v-icon>{{ mdiPencil }}</v-icon>
                 </v-btn>
             </template>
             <v-card-text>
@@ -20,19 +40,21 @@
                     <v-col :cols="canvasCols" class="py-0">
                         <div ref="canvasWrapper" class="canvas-wrapper" :style="{ background: backgroundColor }">
                             <canvas ref="canvas" class="gcode-canvas"></canvas>
-                            <div class="coords">
-                                X: {{ cursorX.toFixed(1) }} Y: {{ cursorY.toFixed(1) }}
-                            </div>
+                            <div class="coords">X: {{ cursorX.toFixed(1) }} Y: {{ cursorY.toFixed(1) }}</div>
                         </div>
                     </v-col>
                     <v-col v-show="showGCode" :cols="gcodeCols" class="py-0">
-                        <div class="viewer">
-                            <CodeStream
-                                ref="gcodestream"
-                                :shown="showGCode"
-                                :currentline.sync="gcodePanelPosition"
-                                :document="gcodePanelDocument"
-                                :is-simulating="!printerIsPrinting" />
+                        <div class="viewer" :class="gcodeViewerModeClass">
+                            <codemirror-async
+                                v-if="showGCode"
+                                ref="gcodeEditor"
+                                :key="editMode ? 'edit' : 'view'"
+                                :value="gcodePanelDocument"
+                                :readonly="!editMode"
+                                file-extension="gcode"
+                                :class="['gcode-editor', gcodeEditorModeClass]"
+                                @input="onEditorInput"
+                                @lineChange="onEditorLineChange" />
                         </div>
                     </v-col>
                     <v-col v-show="showRightPanel" :cols="settingsCols" class="right-panel py-0">
@@ -53,8 +75,7 @@
                                         outlined
                                         hide-details
                                         class="mb-2"
-                                        @change="applyFramePreset">
-                                    </v-select>
+                                        @change="applyFramePreset"></v-select>
                                     <v-row dense>
                                         <v-col cols="12">
                                             <v-text-field
@@ -89,7 +110,7 @@
                                 </v-expansion-panel-header>
                                 <v-expansion-panel-content>
                                     <v-row dense>
-                                        <v-col cols="6">
+                                        <v-col :cols="transformFieldCols">
                                             <v-text-field
                                                 v-model.number="designOffsetX"
                                                 :label="$t('GCodeStudio.OffsetX')"
@@ -99,10 +120,10 @@
                                                 dense
                                                 outlined
                                                 hide-details
-                                                :disabled="!loadedFile"
+                                                :disabled="!loadedFile || editMode"
                                                 @input="updateDesignPosition" />
                                         </v-col>
-                                        <v-col cols="6">
+                                        <v-col :cols="transformFieldCols">
                                             <v-text-field
                                                 v-model.number="designOffsetY"
                                                 :label="$t('GCodeStudio.OffsetY')"
@@ -112,12 +133,12 @@
                                                 dense
                                                 outlined
                                                 hide-details
-                                                :disabled="!loadedFile"
+                                                :disabled="!loadedFile || editMode"
                                                 @input="updateDesignPosition" />
                                         </v-col>
                                     </v-row>
                                     <v-row dense class="mt-2">
-                                        <v-col cols="6">
+                                        <v-col :cols="transformFieldCols">
                                             <v-text-field
                                                 v-model.number="rotationDeg"
                                                 :label="$t('GCodeStudio.Rotation')"
@@ -127,10 +148,10 @@
                                                 dense
                                                 outlined
                                                 hide-details
-                                                :disabled="!loadedFile"
+                                                :disabled="!loadedFile || editMode"
                                                 @input="updateDesignPosition" />
                                         </v-col>
-                                        <v-col cols="6">
+                                        <v-col :cols="transformFieldCols">
                                             <v-select
                                                 v-model="rotationPivot"
                                                 :items="rotationPivotOptions"
@@ -140,9 +161,8 @@
                                                 dense
                                                 outlined
                                                 hide-details
-                                                :disabled="!loadedFile"
-                                                @change="updateDesignPosition">
-                                            </v-select>
+                                                :disabled="!loadedFile || editMode"
+                                                @change="updateDesignPosition"></v-select>
                                         </v-col>
                                     </v-row>
                                     <v-row dense class="mt-2">
@@ -150,7 +170,7 @@
                                             <v-btn
                                                 small
                                                 block
-                                                :disabled="!loadedFile"
+                                                :disabled="!loadedFile || editMode"
                                                 @click="centerDesignInFrame">
                                                 <v-icon left small>{{ mdiArrowExpandAll }}</v-icon>
                                                 {{ $t('GCodeStudio.CenterDesign') }}
@@ -160,7 +180,7 @@
                                             <v-btn
                                                 small
                                                 block
-                                                :disabled="!loadedFile || !hasOffset"
+                                                :disabled="!loadedFile || !hasOffset || editMode"
                                                 @click="resetOffsets">
                                                 <v-icon left small>{{ mdiBackupRestore }}</v-icon>
                                                 {{ $t('GCodeStudio.ResetOffsets') }}
@@ -171,7 +191,7 @@
                                                 small
                                                 block
                                                 color="primary"
-                                                :disabled="!canExportRepositioned || repositionedActionBusy"
+                                                :disabled="!canExportRepositioned || repositionedActionBusy || editMode"
                                                 @click="exportTransformedGcode">
                                                 <v-icon left small>{{ mdiDownload }}</v-icon>
                                                 {{ $t('GCodeStudio.ExportRepositioned') }}
@@ -182,7 +202,7 @@
                                                 small
                                                 block
                                                 color="secondary"
-                                                :disabled="!canExportRepositioned || repositionedActionBusy"
+                                                :disabled="!canExportRepositioned || repositionedActionBusy || editMode"
                                                 :loading="isUploadingRepositioned"
                                                 @click="uploadTransformedGcode">
                                                 <v-icon left small>{{ mdiUpload }}</v-icon>
@@ -198,12 +218,64 @@
                                                     !canExportRepositioned ||
                                                     repositionedActionBusy ||
                                                     !klipperReadyForGui ||
-                                                    printerIsPrinting
+                                                    printerIsPrinting ||
+                                                    editMode
                                                 "
                                                 :loading="isStartingRepositioned"
                                                 @click="uploadAndStartTransformedGcode">
                                                 <v-icon left small>{{ mdiPlay }}</v-icon>
                                                 {{ $t('GCodeStudio.SaveAndStart') }}
+                                            </v-btn>
+                                        </v-col>
+                                    </v-row>
+                                </v-expansion-panel-content>
+                            </v-expansion-panel>
+
+                            <v-expansion-panel v-if="editMode">
+                                <v-expansion-panel-header>
+                                    <v-icon small class="panel-icon">{{ mdiPencil }}</v-icon>
+                                    <span class="panel-title">{{ $t('GCodeStudio.EditMode') }}</span>
+                                </v-expansion-panel-header>
+                                <v-expansion-panel-content>
+                                    <v-row dense>
+                                        <v-col cols="12">
+                                            <v-btn
+                                                small
+                                                block
+                                                color="primary"
+                                                :disabled="!isEditorDirty || editedActionBusy"
+                                                @click="exportEditedGcode">
+                                                <v-icon left small>{{ mdiDownload }}</v-icon>
+                                                {{ $t('GCodeStudio.ExportEdited') }}
+                                            </v-btn>
+                                        </v-col>
+                                        <v-col cols="12" class="mt-2">
+                                            <v-btn
+                                                small
+                                                block
+                                                color="secondary"
+                                                :disabled="!isEditorDirty || editedActionBusy"
+                                                :loading="isUploadingEdited"
+                                                @click="uploadEditedGcode">
+                                                <v-icon left small>{{ mdiUpload }}</v-icon>
+                                                {{ $t('GCodeStudio.SaveEdited') }}
+                                            </v-btn>
+                                        </v-col>
+                                        <v-col cols="12" class="mt-2">
+                                            <v-btn
+                                                small
+                                                block
+                                                color="success"
+                                                :disabled="
+                                                    !isEditorDirty ||
+                                                    editedActionBusy ||
+                                                    !klipperReadyForGui ||
+                                                    printerIsPrinting
+                                                "
+                                                :loading="isStartingEdited"
+                                                @click="uploadAndStartEditedGcode">
+                                                <v-icon left small>{{ mdiPlay }}</v-icon>
+                                                {{ $t('GCodeStudio.SaveEditedAndStart') }}
                                             </v-btn>
                                         </v-col>
                                     </v-row>
@@ -293,6 +365,7 @@
                                         v-model="showTransformedGcode"
                                         class="mt-0"
                                         hide-details
+                                        :disabled="editMode"
                                         :label="$t('GCodeStudio.ShowTransformedGCode')" />
                                 </v-expansion-panel-content>
                             </v-expansion-panel>
@@ -305,15 +378,27 @@
                                 <v-expansion-panel-content>
                                     <div class="mb-2">
                                         <label class="v-label color-label">{{ $t('GCodeStudio.Stitch') }}</label>
-                                        <input v-model="stitchColor" type="color" class="color-picker" @change="updatePathColors" />
+                                        <input
+                                            v-model="stitchColor"
+                                            type="color"
+                                            class="color-picker"
+                                            @change="updatePathColors" />
                                     </div>
                                     <div class="mb-2">
                                         <label class="v-label color-label">{{ $t('GCodeStudio.JumpStitches') }}</label>
-                                        <input v-model="travelColor" type="color" class="color-picker" @change="updatePathColors" />
+                                        <input
+                                            v-model="travelColor"
+                                            type="color"
+                                            class="color-picker"
+                                            @change="updatePathColors" />
                                     </div>
                                     <div class="mb-2">
                                         <label class="v-label color-label">{{ $t('GCodeStudio.StitchPoints') }}</label>
-                                        <input v-model="stitchPointColor" type="color" class="color-picker" @change="updatePathColors" />
+                                        <input
+                                            v-model="stitchPointColor"
+                                            type="color"
+                                            class="color-picker"
+                                            @change="updatePathColors" />
                                     </div>
                                 </v-expansion-panel-content>
                             </v-expansion-panel>
@@ -350,7 +435,6 @@
                                     </v-simple-table>
                                 </v-expansion-panel-content>
                             </v-expansion-panel>
-
                         </v-expansion-panels>
                     </v-col>
                 </v-row>
@@ -442,8 +526,7 @@
                         clearable
                         hide-details
                         dense
-                        outlined>
-                    </v-autocomplete>
+                        outlined></v-autocomplete>
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer />
@@ -480,6 +563,25 @@
                 </v-btn>
             </template>
         </v-snackbar>
+        <v-dialog v-model="showDiscardEditsDialog" persistent :width="400">
+            <v-card>
+                <v-card-title class="text-h6">
+                    {{ $t('GCodeStudio.UnsavedEdits') }}
+                </v-card-title>
+                <v-card-actions>
+                    <v-spacer />
+                    <v-btn text @click="discardEdits">
+                        {{ $t('GCodeStudio.DiscardEdits') }}
+                    </v-btn>
+                    <v-btn text color="primary" @click="keepEditedGcode">
+                        {{ $t('GCodeStudio.KeepEdited') }}
+                    </v-btn>
+                    <v-btn text @click="showDiscardEditsDialog = false">
+                        {{ $t('GCodeStudio.KeepEditing') }}
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
     </div>
 </template>
 
@@ -487,7 +589,7 @@
 import { Component, Mixins, Ref, Watch } from 'vue-property-decorator'
 import BaseMixin from '../mixins/base'
 import Panel from '@/components/ui/Panel.vue'
-import CodeStream from '@/components/gcodeviewer/CodeStream.vue'
+import CodemirrorAsync from '@/components/inputs/CodemirrorAsync'
 import axios, { AxiosProgressEvent } from 'axios'
 import { escapePath, formatFilesize } from '@/plugins/helpers'
 import { Debounce } from 'vue-debounce-decorator'
@@ -516,7 +618,11 @@ import {
     mdiDownload,
     mdiUpload,
     mdiBackupRestore,
+    mdiPencil,
+    mdiContentSave,
 } from '@mdi/js'
+import { sha256 } from 'js-sha256'
+import { defaultMode, getStitchlabGcodeStudioPalette } from '@/store/variables'
 
 interface FramePreset {
     id: string
@@ -590,7 +696,7 @@ declare global {
 }
 
 @Component({
-    components: { Panel, CodeStream },
+    components: { Panel, CodemirrorAsync },
 })
 export default class GCodeStudio2D extends Mixins(BaseMixin) {
     mdiNeedle = needleIcon
@@ -614,6 +720,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     mdiDownload = mdiDownload
     mdiUpload = mdiUpload
     mdiBackupRestore = mdiBackupRestore
+    mdiPencil = mdiPencil
+    mdiContentSave = mdiContentSave
 
     formatFilesize = formatFilesize
 
@@ -642,9 +750,9 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     scrubInterval: ReturnType<typeof setInterval> | undefined = undefined
     scrubFileSize = 0
 
-    stitchColor = '#ed8796'
-    travelColor = '#a6da95'
-    stitchPointColor = '#eed49f'
+    stitchColor = getStitchlabGcodeStudioPalette(defaultMode).stitchColors[0]
+    travelColor = getStitchlabGcodeStudioPalette(defaultMode).travelColor
+    stitchPointColor = getStitchlabGcodeStudioPalette(defaultMode).stitchPointColor
 
     renderLines: RenderLine[] = []
     renderItems: RenderItem[] = []
@@ -695,6 +803,12 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     selectedGcodeFile: string | null = null
     isUploadingRepositioned = false
     isStartingRepositioned = false
+    editedGcode = ''
+    originalGcodeHash = ''
+    isUploadingEdited = false
+    isStartingEdited = false
+    showDiscardEditsDialog = false
+    isSyncingEditor = false
 
     framePresets: FramePreset[] = [
         { id: '4x4', name: '4" x 4" (100mm)', width: 100, height: 100 },
@@ -712,6 +826,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     get panelTitle() {
         let title = this.$t('GCodeStudio.Title').toString()
         if (this.loadedFile) title += `: ${this.loadedFile}`
+        if (this.isEditorDirty) title += ' *'
         return title
     }
 
@@ -740,21 +855,29 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         return this.showGCode ? 2 : 3
     }
 
+    get transformFieldCols() {
+        if (this.isMobile) return 12
+        return this.settingsCols <= 2 ? 12 : 6
+    }
+
     get sdCardFilePath() {
         return this.$store.state.printer.print_stats?.filename ?? ''
     }
 
     get backgroundColor() {
+        if (this.isStitchlabTheme) return this.stitchlabPalette.backgroundColor
         const defaultColor = this.$vuetify.theme.dark ? '#303446' : '#eff1f5'
         return this.$store.state.gui.gcodeStudio?.backgroundColor ?? defaultColor
     }
 
     get gridColor() {
+        if (this.isStitchlabTheme) return this.stitchlabPalette.gridColor
         const defaultColor = this.$vuetify.theme.dark ? '#414559' : '#ccd0da'
         return this.$store.state.gui.gcodeStudio?.gridColor ?? defaultColor
     }
 
     get frameColor() {
+        if (this.isStitchlabTheme) return this.stitchlabPalette.frameColor
         return this.$store.state.gui.gcodeStudio?.frameColor ?? (this.$vuetify.theme.dark ? '#c6a0f6' : '#8839ef')
     }
 
@@ -807,7 +930,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     get lineWidth() {
-        return this.$store.state.gui.gcodeStudio?.lineWidth ?? 0.6
+        return this.$store.state.gui.gcodeStudio?.lineWidth ?? 0.1
     }
 
     set lineWidth(newVal) {
@@ -815,7 +938,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     get stitchPointSize() {
-        return this.$store.state.gui.gcodeStudio?.stitchPointSize ?? 1
+        return this.$store.state.gui.gcodeStudio?.stitchPointSize ?? 0.2
     }
 
     set stitchPointSize(newVal) {
@@ -883,7 +1006,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     get normalizedRotationDeg(): number {
-        const normalized = ((this.rotationDeg || 0) % 360 + 360) % 360
+        const normalized = (((this.rotationDeg || 0) % 360) + 360) % 360
         return normalized
     }
 
@@ -901,10 +1024,23 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 
     get gcodePanelDocument(): string {
         if (!this.originalGcode) return ''
+        if (this.editMode) return this.editedGcode || this.normalizedOriginalGcode
         if (this.showTransformedGcode && this.hasTransform) {
             return this.transformGcode()
         }
         return this.normalizedOriginalGcode
+    }
+
+    get gcodeEditorModeClass(): string {
+        if (this.editMode) return 'gcode-editor--edit'
+        if (this.showTransformedGcode && this.hasTransform) return 'gcode-editor--transformed'
+        return 'gcode-editor--source'
+    }
+
+    get gcodeViewerModeClass(): string {
+        if (this.editMode) return 'viewer--edit'
+        if (this.showTransformedGcode && this.hasTransform) return 'viewer--transformed'
+        return 'viewer--source'
     }
 
     get originalLineBreakOffsets(): number[] {
@@ -916,16 +1052,20 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     get gcodePanelPosition(): number {
+        if (this.editMode) return this.scrubPosition
         if (!this.showTransformedGcode || !this.hasTransform) return this.scrubPosition
         if (!this.originalLineBreakOffsets.length || !this.panelLineBreakOffsets.length) return this.scrubPosition
         const lineIndex = this.getLineIndexForOffset(this.scrubPosition, this.originalLineBreakOffsets)
         return (
-            this.panelLineBreakOffsets[Math.min(lineIndex, this.panelLineBreakOffsets.length - 1)] ??
-            this.scrubPosition
+            this.panelLineBreakOffsets[Math.min(lineIndex, this.panelLineBreakOffsets.length - 1)] ?? this.scrubPosition
         )
     }
 
     set gcodePanelPosition(newOffset: number) {
+        if (this.editMode) {
+            this.scrubPosition = newOffset
+            return
+        }
         if (!this.showTransformedGcode || !this.hasTransform) {
             this.scrubPosition = newOffset
             return
@@ -939,7 +1079,6 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
             this.originalLineBreakOffsets[Math.min(lineIndex, this.originalLineBreakOffsets.length - 1)]
         this.scrubPosition = mappedOffset ?? newOffset
     }
-
 
     get showFrameBorder() {
         return this.$store.state.gui.gcodeStudio?.showFrameBorder ?? true
@@ -994,7 +1133,25 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     set moveMode(newVal: boolean) {
+        if (this.editMode) return
         this.$store.dispatch('gui/saveSetting', { name: 'gcodeStudio.moveMode', value: newVal })
+    }
+
+    get editMode(): boolean {
+        return this.$store.state.gui.gcodeStudio?.editMode ?? false
+    }
+
+    set editMode(newVal: boolean) {
+        this.$store.dispatch('gui/saveSetting', { name: 'gcodeStudio.editMode', value: newVal })
+    }
+
+    get isEditorDirty(): boolean {
+        if (!this.editMode || !this.originalGcodeHash) return false
+        return sha256(this.editedGcode) !== this.originalGcodeHash
+    }
+
+    get editedActionBusy(): boolean {
+        return this.isUploadingEdited || this.isStartingEdited
     }
 
     get hasOffset(): boolean {
@@ -1018,14 +1175,27 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     get currentPosition() {
-        return [
-            this.livePosition[0] - this.gcodeOffset[0],
-            this.livePosition[1] - this.gcodeOffset[1],
-        ]
+        return [this.livePosition[0] - this.gcodeOffset[0], this.livePosition[1] - this.gcodeOffset[1]]
+    }
+
+    get isStitchlabTheme(): boolean {
+        return (this.$store.state.gui.uiSettings?.theme ?? '') === 'stitchlab'
+    }
+
+    get themeMode(): 'dark' | 'light' {
+        return this.$vuetify.theme.dark ? 'dark' : 'light'
+    }
+
+    get stitchlabPalette() {
+        return getStitchlabGcodeStudioPalette(this.themeMode)
     }
 
     mounted(): void {
-        this.stitchColor = this.$store.state.gui.gcodeStudio?.stitchColors?.[0] ?? this.stitchColor
+        if (this.isStitchlabTheme) {
+            this.applyThemePreviewColors()
+        } else {
+            this.stitchColor = this.$store.state.gui.gcodeStudio?.stitchColors?.[0] ?? this.stitchColor
+        }
         this.$store.dispatch('files/initRootDirs', ['gcodes'])
         this.bindKeyboardEvents()
         this.loadLibraryScripts().then(() => {
@@ -1375,21 +1545,15 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         const spacing = Math.max(this.gridSpacing, 1)
 
         for (let x = -halfW; x <= halfW; x += spacing) {
-            const line = new this.paperScope.Path.Line(
-                this.toPoint({ x, y: -halfH }),
-                this.toPoint({ x, y: halfH })
-            )
+            const line = new this.paperScope.Path.Line(this.toPoint({ x, y: -halfH }), this.toPoint({ x, y: halfH }))
             line.strokeColor = new this.paperScope.Color(this.gridColor)
-            line.strokeWidth = 0.5
+            line.strokeWidth = 0.35
         }
 
         for (let y = -halfH; y <= halfH; y += spacing) {
-            const line = new this.paperScope.Path.Line(
-                this.toPoint({ x: -halfW, y }),
-                this.toPoint({ x: halfW, y })
-            )
+            const line = new this.paperScope.Path.Line(this.toPoint({ x: -halfW, y }), this.toPoint({ x: halfW, y }))
             line.strokeColor = new this.paperScope.Color(this.gridColor)
-            line.strokeWidth = 0.5
+            line.strokeWidth = 0.35
         }
     }
 
@@ -1407,7 +1571,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
             this.toPoint({ x: halfW, y: halfH })
         )
         rect.strokeColor = new this.paperScope.Color(this.frameColor)
-        rect.strokeWidth = 1
+        rect.strokeWidth = 0.75
+        rect.dashArray = [3, 2]
         rect.fillColor = null
     }
 
@@ -1619,6 +1784,175 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         }
     }
 
+    toggleEditMode(): void {
+        if (this.editMode) {
+            if (this.isEditorDirty) {
+                this.showDiscardEditsDialog = true
+                return
+            }
+            this.exitEditMode()
+        } else {
+            this.enterEditMode()
+        }
+    }
+
+    enterEditMode(): void {
+        this.editedGcode = this.originalGcode
+        this.originalGcodeHash = sha256(this.originalGcode)
+        if (this.moveMode) this.moveMode = false
+        this.editMode = true
+    }
+
+    exitEditMode(): void {
+        this.editMode = false
+        this.editedGcode = ''
+        this.originalGcodeHash = ''
+        this.showDiscardEditsDialog = false
+    }
+
+    discardEdits(): void {
+        this.loadGcode(this.originalGcode)
+        this.exitEditMode()
+    }
+
+    keepEditedGcode(): void {
+        this.originalGcode = this.editedGcode
+        this.showDiscardEditsDialog = false
+        this.exitEditMode()
+    }
+
+    onEditorInput(newContent: string): void {
+        if (!this.editMode) return
+        if (newContent === this.editedGcode) return
+        this.editedGcode = newContent
+        this.debouncedReparse(newContent)
+    }
+
+    @Debounce(400)
+    debouncedReparse(gcode: string): void {
+        this.originalGcode = gcode
+        this.scrubFileSize = gcode.length
+        this.scrubPosition = Math.min(this.scrubPosition, this.scrubFileSize)
+
+        const parsed = this.parseGcode(gcode)
+        if (!parsed) {
+            this.renderLines = []
+            this.renderItems = []
+            this.stitchPointItems = []
+            this.colorChangeItems = []
+            this.visibleMoveCount = 0
+            this.treatG0AsStitch = false
+            this.stitchPointMoveIndices = []
+            this.playbackPosition = null
+            this.layers.path?.removeChildren()
+            this.layers.points?.removeChildren()
+            this.layers.markers?.removeChildren()
+            return
+        }
+
+        this.renderLines = parsed.renderLines
+        this.moveOffsets = parsed.moveOffsets
+        this.colorChangeIndices = parsed.colorChangeIndices
+        this.hasColorChanges = parsed.hasColorChanges
+        this.stitchCount = parsed.stitchCount
+        this.jumpCount = parsed.jumpCount
+        this.designWidth = parsed.designWidth
+        this.designHeight = parsed.designHeight
+        this.designCenter = parsed.designCenter
+        this.treatG0AsStitch = parsed.treatG0AsStitch
+        this.stitchPointMoveIndices = parsed.stitchPointMoveIndices
+        this.visibleMoveCount = this.renderLines.length
+
+        this.buildPathItems()
+        this.renderStitchPoints()
+        this.renderColorChanges()
+        this.updatePlaybackPosition()
+        this.updateNeedleMarker()
+        this.updateItemVisibility()
+        this.paperScope?.view?.update()
+    }
+
+    onEditorLineChange(lineNumber: number): void {
+        if (this.isSyncingEditor) return
+        if (!this.panelLineBreakOffsets.length || !lineNumber) return
+        const clampedLine = Math.min(lineNumber - 1, this.panelLineBreakOffsets.length - 1)
+        if (clampedLine < 0) return
+        const byteOffset = this.panelLineBreakOffsets[clampedLine]
+        this.gcodePanelPosition = byteOffset
+    }
+
+    getEditedFilename(): string {
+        const loadedFile = (this.loadedFile ?? '').replace(/^\//, '').replace(/^gcodes\//i, '')
+        const baseName = loadedFile.split('/').pop() || ''
+        if (!baseName) return 'edited.gcode'
+        return `${baseName.replace(/\.g(code)?$/i, '')}_edited.gcode`
+    }
+
+    getEditedPath(): string {
+        const loadedFile = (this.loadedFile ?? '').replace(/^\//, '').replace(/^gcodes\//i, '')
+        if (!loadedFile.includes('/')) return ''
+        const parts = loadedFile.split('/')
+        return parts.slice(0, -1).join('/')
+    }
+
+    exportEditedGcode(): void {
+        if (!this.isEditorDirty || this.editedActionBusy) return
+        const blob = new Blob([this.editedGcode], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = this.getEditedFilename()
+        link.click()
+        URL.revokeObjectURL(url)
+    }
+
+    async uploadEditedGcode(): Promise<void> {
+        if (!this.isEditorDirty || this.editedActionBusy) return
+        this.isUploadingEdited = true
+        try {
+            const filename = this.getEditedFilename()
+            const path = this.getEditedPath()
+            const file = new File([this.editedGcode], filename, { type: 'text/plain' })
+
+            const result = await this.$store.dispatch('files/uploadFile', {
+                file,
+                path,
+                root: 'gcodes',
+            })
+
+            if (result !== false) {
+                this.$toast.success(this.$t('Files.SuccessfullyUploaded', { filename: result }).toString())
+                this.originalGcodeHash = sha256(this.editedGcode)
+            }
+        } finally {
+            this.isUploadingEdited = false
+        }
+    }
+
+    async uploadAndStartEditedGcode(): Promise<void> {
+        if (!this.isEditorDirty || this.editedActionBusy) return
+        if (!this.klipperReadyForGui || this.printerIsPrinting) return
+        this.isStartingEdited = true
+        try {
+            const filename = this.getEditedFilename()
+            const path = this.getEditedPath()
+            const file = new File([this.editedGcode], filename, { type: 'text/plain' })
+
+            const result = await this.$store.dispatch('files/uploadFile', {
+                file,
+                path,
+                root: 'gcodes',
+            })
+
+            if (result !== false) {
+                const startPath = path ? `${path}/${result}` : result
+                this.$socket.emit('printer.print.start', { filename: startPath }, { action: 'switchToDashboard' })
+            }
+        } finally {
+            this.isStartingEdited = false
+        }
+    }
+
     updatePathColors(): void {
         if (!this.paperScope) return
 
@@ -1639,6 +1973,33 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         })
     }
 
+    applyThemePreviewColors(previousMode?: 'dark' | 'light'): void {
+        if (!this.isStitchlabTheme) return
+
+        const palette = this.stitchlabPalette
+        if (!previousMode) {
+            this.stitchColor = palette.stitchColors[0]
+            this.travelColor = palette.travelColor
+            this.stitchPointColor = palette.stitchPointColor
+            return
+        }
+
+        const previousPalette = getStitchlabGcodeStudioPalette(previousMode)
+        if (this.sameColor(this.stitchColor, previousPalette.stitchColors[0])) {
+            this.stitchColor = palette.stitchColors[0]
+        }
+        if (this.sameColor(this.travelColor, previousPalette.travelColor)) {
+            this.travelColor = palette.travelColor
+        }
+        if (this.sameColor(this.stitchPointColor, previousPalette.stitchPointColor)) {
+            this.stitchPointColor = palette.stitchPointColor
+        }
+    }
+
+    sameColor(first: string | null | undefined, second: string | null | undefined): boolean {
+        return (first ?? '').trim().toLowerCase() === (second ?? '').trim().toLowerCase()
+    }
+
     renderStitchPoints(): void {
         if (!this.paperScope || !this.layers.points) return
 
@@ -1651,7 +2012,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         if (!this.stitchPointMoveIndices.length) return
 
         this.layers.points.activate()
-        const radius = Math.max(Number(this.stitchPointSize) || 0, 0.1)
+        // Treat the control value as visible dot size (diameter), not radius.
+        const radius = Math.max(Number(this.stitchPointSize) || 0, 0.1) / 2
         const allowedMoves = new Set(this.stitchPointMoveIndices)
         this.renderLines.forEach((renderLine) => {
             if (!allowedMoves.has(renderLine.moveIndex)) return
@@ -1733,8 +2095,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 
         horizontal.strokeColor = new this.paperScope!.Color(this.$vuetify.theme.dark ? '#c6d0f5' : '#4c4f69')
         vertical.strokeColor = new this.paperScope!.Color(this.$vuetify.theme.dark ? '#c6d0f5' : '#4c4f69')
-        horizontal.strokeWidth = 0.8
-        vertical.strokeWidth = 0.8
+        horizontal.strokeWidth = 0.45
+        vertical.strokeWidth = 0.45
 
         this.needleMarker = new this.paperScope!.Group([horizontal, vertical])
     }
@@ -1857,6 +2219,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     clearLoadedFile(): void {
+        if (this.editMode) this.exitEditMode()
         this.loadedFile = null
         this.fileData = ''
         this.originalGcode = ''
@@ -2144,8 +2507,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         }
         const treatG0AsStitch = g1Count === 0 && g0Count > 0
         const normalizedJumpCount = treatG0AsStitch ? 0 : jumpCount
-        const stitchCount =
-            headerStitchCount ?? (treatG0AsStitch ? g0Count : stitchCountFromMoves)
+        const stitchCount = headerStitchCount ?? (treatG0AsStitch ? g0Count : stitchCountFromMoves)
 
         return {
             renderLines,
@@ -2164,7 +2526,10 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     normalizeLineEndings(gcode: string): string {
-        return gcode.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\uFEFF/g, '')
+        return gcode
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .replace(/\uFEFF/g, '')
     }
 
     normalizeGcode(gcode: string): string {
@@ -2210,9 +2575,9 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     getLineWidthForType(type: string): number {
-        const baseWidth = Math.max(Number(this.lineWidth) || 0, 0.1)
+        const baseWidth = Math.max(Number(this.lineWidth) || 0, 0.05)
         const isTravel = type === 'G0' && !this.treatG0AsStitch
-        return isTravel ? Math.max(0.2, baseWidth * 0.7) : baseWidth
+        return isTravel ? Math.max(0.12, baseWidth * 0.55) : baseWidth
     }
 
     updateLineWidths(): void {
@@ -2253,8 +2618,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         path.strokeCap = 'round'
         path.strokeJoin = 'round'
         if (isTravel) {
-            path.dashArray = [4, 4]
-            path.opacity = 0.6
+            path.dashArray = [2, 3]
+            path.opacity = 0.5
         }
 
         return path
@@ -2335,15 +2700,26 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         this.updateItemVisibility()
         this.updatePlaybackPosition()
         this.updateNeedleMarker()
+        this.scrollEditorToScrubPosition()
+    }
+
+    scrollEditorToScrubPosition(): void {
+        if (!this.showGCode || !this.panelLineBreakOffsets.length) return
+        const editor = this.$refs.gcodeEditor as any
+        if (!editor?.gotoLine) return
+        const panelOffset = this.gcodePanelPosition
+        const lineIndex = this.getLineIndexForOffset(panelOffset, this.panelLineBreakOffsets)
+        this.isSyncingEditor = true
+        editor.gotoLine(lineIndex + 1)
+        this.$nextTick(() => {
+            this.isSyncingEditor = false
+        })
     }
 
     stepScrubByMove(delta: number): void {
         if (!this.renderLines.length || !this.scrubFileSize) return
 
-        const targetCount = Math.min(
-            this.renderLines.length,
-            Math.max(0, this.visibleMoveCount + delta)
-        )
+        const targetCount = Math.min(this.renderLines.length, Math.max(0, this.visibleMoveCount + delta))
         if (targetCount <= 0) {
             this.scrubPosition = 0
             return
@@ -2411,6 +2787,26 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     @Watch('rotationPivot')
     rotationPivotChanged(): void {
         this.updateDesignPosition()
+    }
+
+    @Watch('themeMode')
+    themeModeChanged(_newMode: 'dark' | 'light', oldMode: 'dark' | 'light'): void {
+        if (!this.isStitchlabTheme) return
+
+        this.applyThemePreviewColors(oldMode)
+        this.renderFrameAndGrid()
+        this.updatePathColors()
+        this.updateNeedleMarker()
+    }
+
+    @Watch('isStitchlabTheme')
+    stitchlabThemeChanged(enabled: boolean): void {
+        if (!enabled) return
+
+        this.applyThemePreviewColors()
+        this.renderFrameAndGrid()
+        this.updatePathColors()
+        this.updateNeedleMarker()
     }
 
     @Watch('lineWidth')
@@ -2515,6 +2911,50 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     overflow: hidden;
 }
 
+.viewer--edit {
+    border-color: var(--ctp-peach, rgba(128, 128, 128, 0.25));
+}
+
+.viewer--transformed {
+    border-color: var(--ctp-sapphire, rgba(128, 128, 128, 0.25));
+}
+
+.gcode-editor {
+    height: 100%;
+}
+
+.gcode-editor--source {
+    --gcode-editor-pane-bg: var(--stitchlab-code-bg, var(--ctp-crust));
+    --gcode-editor-gutter-bg: var(--stitchlab-code-gutter-bg, var(--ctp-crust));
+    --gcode-editor-divider-color: var(--ctp-surface0);
+    --gcode-editor-active-line-bg: var(--ctp-surface0);
+    --gcode-editor-line-number-color: var(--ctp-overlay1);
+}
+
+.gcode-editor--edit {
+    --gcode-editor-pane-bg: var(--stitchlab-code-bg, var(--ctp-crust));
+    --gcode-editor-gutter-bg: var(--ctp-mantle);
+    --gcode-editor-divider-color: var(--ctp-peach);
+    --gcode-editor-active-line-bg: var(--ctp-surface1);
+    --gcode-editor-line-number-color: var(--ctp-peach);
+}
+
+.gcode-editor--transformed {
+    --gcode-editor-pane-bg: var(--stitchlab-code-bg, var(--ctp-crust));
+    --gcode-editor-gutter-bg: var(--ctp-mantle);
+    --gcode-editor-divider-color: var(--ctp-sapphire);
+    --gcode-editor-active-line-bg: var(--ctp-surface1);
+    --gcode-editor-line-number-color: var(--ctp-overlay1);
+}
+
+.gcode-editor /deep/ .cm-editor {
+    height: 100%;
+}
+
+.gcode-editor /deep/ .cm-scroller {
+    overflow: auto;
+}
+
 .scrubber {
     position: relative;
     left: 0;
@@ -2560,5 +3000,4 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     margin-left: 0 !important;
     margin-right: 0 !important;
 }
-
 </style>

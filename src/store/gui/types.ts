@@ -99,6 +99,8 @@ export interface GuiState {
         framePreset: string
         showGrid: boolean
         gridSpacing: number
+        lineWidth: number
+        stitchPointSize: number
         showStitchPoints: boolean
         showJumpStitches: boolean
         showColorChanges: boolean

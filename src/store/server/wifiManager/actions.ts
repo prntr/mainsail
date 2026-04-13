@@ -189,7 +189,11 @@ export const actions: ActionTree<ServerWifiState, RootState> = {
     enableAp({ commit, state }, profile?: string) {
         if (!state.available) return
         commit('setConnecting', true)
-        Vue.$socket.emit('server.wifi.ap.enable', { profile: profile ?? 'AccessPopup' }, { action: 'server/wifiManager/onApEnable' })
+        Vue.$socket.emit(
+            'server.wifi.ap.enable',
+            { profile: profile ?? 'AccessPopup' },
+            { action: 'server/wifiManager/onApEnable' }
+        )
     },
 
     disableAp({ commit, state }) {

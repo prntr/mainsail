@@ -37,18 +37,41 @@
                 <v-divider class="my-2" />
                 <settings-row :title="$t('Settings.UiSettingsTab.Primary')">
                     <v-btn
-                        v-if="primaryColor.toLowerCase() !== defaultPrimaryColor.toLowerCase()"
+                        v-if="!isPrimaryColorDefault"
                         small
                         text
                         class="minwidth-0"
-                        @click="primaryColor = defaultPrimaryColor">
+                        @click="primaryColor = defaultPrimarySetting">
                         <v-icon small>{{ mdiRestart }}</v-icon>
                     </v-btn>
-                    <v-menu bottom left offset-y :close-on-content-click="false">
+                    <v-menu bottom left offset-y :close-on-content-click="usesThemePrimarySwatches">
                         <template #activator="{ on, attrs }">
-                            <v-btn v-bind="attrs" :color="primaryColor" class="minwidth-0 px-5" small v-on="on" />
+                            <v-btn
+                                v-bind="attrs"
+                                class="minwidth-0 px-5"
+                                small
+                                :style="primaryColorActivatorStyle"
+                                v-on="on" />
                         </template>
+                        <div v-if="usesThemePrimarySwatches" class="settings-ui-settings-tab__primary-swatches pa-2">
+                            <v-btn
+                                v-for="option in themePrimaryOptions"
+                                :key="option.key"
+                                icon
+                                class="settings-ui-settings-tab__swatch-btn ma-1"
+                                :title="option.key"
+                                @click="selectThemePrimaryOption(option.key)">
+                                <span
+                                    class="settings-ui-settings-tab__swatch"
+                                    :class="{
+                                        'settings-ui-settings-tab__swatch--selected':
+                                            selectedThemePrimaryKey === option.key,
+                                    }"
+                                    :style="{ backgroundColor: themePrimaryOptionColor(option) }" />
+                            </v-btn>
+                        </div>
                         <v-color-picker
+                            v-else
                             :value="primaryColor"
                             hide-mode-switch
                             mode="rgba"
@@ -339,7 +362,17 @@ import Component from 'vue-class-component'
 import { Mixins, Watch } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import SettingsRow from '@/components/settings/SettingsRow.vue'
-import { defaultLogoColor, defaultPrimaryColor, defaultBigThumbnailBackground, themes } from '@/store/variables'
+import {
+    defaultBigThumbnailBackground,
+    defaultLogoColor,
+    defaultPrimaryColor,
+    getThemePrimaryOptionKey,
+    getThemePrimaryOptions,
+    normalizeThemePrimarySetting,
+    resolveThemePrimaryColor,
+    ThemePrimaryOption,
+    themes,
+} from '@/store/variables'
 import { Debounce } from 'vue-debounce-decorator'
 import { mdiRestart, mdiTimerOutline } from '@mdi/js'
 import { ServerPowerStateDevice } from '@/store/server/power/types'
@@ -367,11 +400,12 @@ export default class SettingsUiSettingsTab extends Mixins(BaseMixin, ThemeMixin)
     }
 
     set themeName(newVal: string) {
+        const shouldResetPrimary = this.isPrimaryColorDefault
         const newTheme = themes.find((theme) => theme.name === newVal)
         if (this.logoColor === this.defaultLogoColor) {
             this.logoColor = newTheme?.colorLogo ?? defaultLogoColor
         }
-        if (this.primaryColor === this.defaultPrimaryColor) {
+        if (shouldResetPrimary) {
             this.primaryColor = newTheme?.colorPrimary ?? defaultPrimaryColor
         }
 
@@ -412,8 +446,12 @@ export default class SettingsUiSettingsTab extends Mixins(BaseMixin, ThemeMixin)
         return this.theme?.colorLogo ?? defaultLogoColor
     }
 
+    get defaultPrimarySetting() {
+        return normalizeThemePrimarySetting(this.themeName, this.theme?.colorPrimary ?? defaultPrimaryColor)
+    }
+
     get defaultPrimaryColor() {
-        return this.theme?.colorPrimary ?? defaultPrimaryColor
+        return resolveThemePrimaryColor(this.themeName, this.mode, this.defaultPrimarySetting)
     }
 
     get primaryColor() {
@@ -421,7 +459,54 @@ export default class SettingsUiSettingsTab extends Mixins(BaseMixin, ThemeMixin)
     }
 
     set primaryColor(newVal) {
-        this.$store.dispatch('gui/saveSetting', { name: 'uiSettings.primary', value: newVal })
+        this.$store.dispatch('gui/saveSetting', {
+            name: 'uiSettings.primary',
+            value: normalizeThemePrimarySetting(this.themeName, newVal),
+        })
+    }
+
+    get effectivePrimaryColor() {
+        return resolveThemePrimaryColor(this.themeName, this.mode, this.primaryColor)
+    }
+
+    get primaryTextColor(): string {
+        let splits = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(this.effectivePrimaryColor)
+        if (splits) {
+            const r = parseInt(splits[1], 16) * 0.2126
+            const g = parseInt(splits[2], 16) * 0.7152
+            const b = parseInt(splits[3], 16) * 0.0722
+            const perceivedLightness = (r + g + b) / 255
+
+            return perceivedLightness > 0.7 ? '#222' : '#fff'
+        }
+
+        return '#ffffff'
+    }
+
+    get primaryColorActivatorStyle() {
+        return {
+            'background-color': this.effectivePrimaryColor,
+            color: this.primaryTextColor,
+        }
+    }
+
+    get themePrimaryOptions(): ThemePrimaryOption[] {
+        return getThemePrimaryOptions(this.themeName)
+    }
+
+    get usesThemePrimarySwatches(): boolean {
+        return this.themePrimaryOptions.length > 0
+    }
+
+    get selectedThemePrimaryKey(): string | null {
+        return getThemePrimaryOptionKey(this.themeName, this.primaryColor)
+    }
+
+    get isPrimaryColorDefault(): boolean {
+        return (
+            normalizeThemePrimarySetting(this.themeName, this.primaryColor).toLowerCase() ===
+            this.defaultPrimarySetting.toLowerCase()
+        )
     }
 
     get boolBigThumbnail() {
@@ -742,5 +827,41 @@ export default class SettingsUiSettingsTab extends Mixins(BaseMixin, ThemeMixin)
         // update logo color to theme logo color if the theme has a colorLogo
         if (theme.colorLogo) this.logoColor = theme.colorLogo
     }
+
+    themePrimaryOptionColor(option: ThemePrimaryOption): string {
+        return this.mode === 'dark' ? option.dark : option.light
+    }
+
+    selectThemePrimaryOption(optionKey: string): void {
+        this.primaryColor = `stitchlab:${optionKey}`
+    }
 }
 </script>
+
+<style scoped>
+.settings-ui-settings-tab__primary-swatches {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    max-width: 184px;
+}
+
+.settings-ui-settings-tab__swatch-btn {
+    width: 36px !important;
+    height: 36px !important;
+}
+
+.settings-ui-settings-tab__swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.75);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.16);
+}
+
+.settings-ui-settings-tab__swatch--selected {
+    box-shadow:
+        0 0 0 2px rgba(255, 255, 255, 0.92),
+        0 0 0 4px rgba(0, 0, 0, 0.22);
+}
+</style>

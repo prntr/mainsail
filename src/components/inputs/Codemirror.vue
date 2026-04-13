@@ -16,7 +16,7 @@ import { EditorState } from '@codemirror/state'
 import { vscodeDark, vscodeLight } from '@uiw/codemirror-theme-vscode'
 import { StreamLanguage } from '@codemirror/language'
 import { klipper_config } from '@/plugins/StreamParserKlipperConfig'
-import { gcode } from '@/plugins/StreamParserGcode'
+import { gcode, gcodeSyntaxHighlighting } from '@/plugins/StreamParserGcode'
 import { indentWithTab } from '@codemirror/commands'
 import { json } from '@codemirror/lang-json'
 import { css } from '@codemirror/lang-css'
@@ -41,6 +41,15 @@ export default class Codemirror extends Mixins(BaseMixin, ThemeMixin) {
 
     @Prop({ required: false, default: '' })
     declare readonly fileExtension: string
+
+    @Prop({ required: false, default: false })
+    declare readonly readonly: boolean
+
+    @Watch('readonly')
+    readonlyChanged() {
+        const content = this.cminstance?.state?.doc.toString() ?? ''
+        this.setCmValue(content)
+    }
 
     @Watch('value')
     valueChanged(newVal: string) {
@@ -88,19 +97,34 @@ export default class Codemirror extends Mixins(BaseMixin, ThemeMixin) {
             keymap.of([indentWithTab]),
             EditorView.updateListener.of((update) => {
                 if (update.selectionSet) {
-                    const line = this.cminstance?.state?.doc.lineAt(this.cminstance?.state?.selection.main.head).number
-                    this.$emit('lineChange', line)
+                    const isUserEvent = update.transactions.some(
+                        (tr) =>
+                            tr.isUserEvent('select') ||
+                            tr.isUserEvent('input') ||
+                            tr.isUserEvent('delete') ||
+                            tr.isUserEvent('undo') ||
+                            tr.isUserEvent('redo')
+                    )
+                    if (isUserEvent) {
+                        const line = this.cminstance?.state?.doc.lineAt(
+                            this.cminstance?.state?.selection.main.head
+                        ).number
+                        this.$emit('lineChange', line)
+                    }
                 }
-                this.content = update.state?.doc.toString()
-                if (this.$emit) {
+                if (update.docChanged) {
+                    this.content = update.state?.doc.toString()
                     this.$emit('input', this.content)
                 }
             }),
         ]
 
+        if (this.readonly) extensions.push(EditorState.readOnly.of(true))
+
         if (['cfg', 'conf'].includes(this.fileExtension)) extensions.push(StreamLanguage.define(klipper_config))
-        else if (['gcode'].includes(this.fileExtension)) extensions.push(StreamLanguage.define(gcode))
-        else if (['json'].includes(this.fileExtension)) extensions.push(json())
+        else if (['gcode'].includes(this.fileExtension)) {
+            extensions.push(StreamLanguage.define(gcode), gcodeSyntaxHighlighting)
+        } else if (['json'].includes(this.fileExtension)) extensions.push(json())
         else if (['css', 'scss', 'sass'].includes(this.fileExtension)) extensions.push(css())
 
         return extensions

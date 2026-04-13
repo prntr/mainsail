@@ -32,7 +32,7 @@
                     <v-btn
                         block
                         large
-                        color="primary"
+                        color="secondary"
                         :disabled="!canMoveNeedle"
                         :loading="loadings.includes('stitch')"
                         @click="makeStitch">
@@ -64,6 +64,7 @@
                 block
                 large
                 color="warning"
+                class="embroidery-control-panel__zero-btn"
                 :disabled="!klipperReadyForGui"
                 :loading="loadings.includes('zeroNeedle')"
                 @click="zeroNeedlePosition">
@@ -72,7 +73,6 @@
                 </v-icon>
                 {{ $t('Panels.EmbroideryPanel.ZeroPosition') }}
             </v-btn>
-
         </v-card-text>
     </panel>
 </template>

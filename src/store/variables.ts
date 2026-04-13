@@ -5,6 +5,118 @@ export const defaultTheme = 'stitchlab'
 export const defaultLogoColor = '#D41216'
 export const defaultPrimaryColor = '#2196f3'
 export const defaultBigThumbnailBackground = '#1e1e1e'
+export const stitchlabPrimaryPrefix = 'stitchlab:'
+export const stitchlabDefaultPrimary = `${stitchlabPrimaryPrefix}blue`
+
+export interface ThemePrimaryOption {
+    key: string
+    dark: string
+    light: string
+}
+
+export interface StitchlabGcodeStudioPalette {
+    backgroundColor: string
+    gridColor: string
+    frameColor: string
+    stitchColors: string[]
+    travelColor: string
+    stitchPointColor: string
+}
+
+export const stitchlabPrimaryOptions: ThemePrimaryOption[] = [
+    { key: 'rosewater', dark: '#f2d5cf', light: '#dc8a78' },
+    { key: 'flamingo', dark: '#eebebe', light: '#dd7878' },
+    { key: 'pink', dark: '#f4b8e4', light: '#ea76cb' },
+    { key: 'mauve', dark: '#ca9ee6', light: '#8839ef' },
+    { key: 'red', dark: '#e78284', light: '#d20f39' },
+    { key: 'maroon', dark: '#ea999c', light: '#e64553' },
+    { key: 'peach', dark: '#ef9f76', light: '#fe640b' },
+    { key: 'yellow', dark: '#e5c890', light: '#df8e1d' },
+    { key: 'green', dark: '#a6d189', light: '#40a02b' },
+    { key: 'teal', dark: '#81c8be', light: '#179299' },
+    { key: 'sky', dark: '#99d1db', light: '#04a5e5' },
+    { key: 'sapphire', dark: '#85c1dc', light: '#209fb5' },
+    { key: 'blue', dark: '#8caaee', light: '#1e66f5' },
+    { key: 'lavender', dark: '#babbf1', light: '#7287fd' },
+]
+
+const stitchlabGcodeStudioPalettes: Record<'dark' | 'light', StitchlabGcodeStudioPalette> = {
+    dark: {
+        backgroundColor: '#1f2230',
+        gridColor: '#414559',
+        frameColor: '#838ba7',
+        stitchColors: ['#8caaee', '#81c8be', '#ef9f76', '#ca9ee6', '#e5c890'],
+        travelColor: '#737994',
+        stitchPointColor: '#8caaee',
+    },
+    light: {
+        backgroundColor: '#d6dae2',
+        gridColor: '#ccd0da',
+        frameColor: '#8c8fa1',
+        stitchColors: ['#1e66f5', '#179299', '#fe640b', '#8839ef', '#df8e1d'],
+        travelColor: '#9ca0b0',
+        stitchPointColor: '#1e66f5',
+    },
+}
+
+export function getStitchlabGcodeStudioPalette(mode: string): StitchlabGcodeStudioPalette {
+    return stitchlabGcodeStudioPalettes[mode === 'dark' ? 'dark' : 'light']
+}
+
+function getStitchlabPrimaryOptionByKey(key: string | null | undefined): ThemePrimaryOption | undefined {
+    if (!key) return undefined
+
+    return stitchlabPrimaryOptions.find((option) => option.key === key)
+}
+
+function getStitchlabPrimaryOptionKey(value: string | null | undefined): string | null {
+    const normalizedValue = value?.toLowerCase() ?? ''
+    if (!normalizedValue) return null
+
+    if (normalizedValue.startsWith(stitchlabPrimaryPrefix)) {
+        const optionKey = normalizedValue.slice(stitchlabPrimaryPrefix.length)
+
+        return getStitchlabPrimaryOptionByKey(optionKey)?.key ?? null
+    }
+
+    const option = stitchlabPrimaryOptions.find(
+        ({ dark, light }) => dark.toLowerCase() === normalizedValue || light.toLowerCase() === normalizedValue
+    )
+
+    return option?.key ?? null
+}
+
+export function getThemePrimaryOptions(themeName: string): ThemePrimaryOption[] {
+    return themeName === 'stitchlab' ? stitchlabPrimaryOptions : []
+}
+
+export function getThemePrimaryOptionKey(themeName: string, value: string | null | undefined): string | null {
+    if (themeName !== 'stitchlab') return null
+
+    return getStitchlabPrimaryOptionKey(value)
+}
+
+export function normalizeThemePrimarySetting(themeName: string, value: string | null | undefined): string {
+    if (themeName !== 'stitchlab') return value ?? defaultPrimaryColor
+
+    if (!value || value.toLowerCase() === defaultPrimaryColor.toLowerCase()) return stitchlabDefaultPrimary
+
+    const optionKey = getStitchlabPrimaryOptionKey(value)
+
+    return optionKey ? `${stitchlabPrimaryPrefix}${optionKey}` : value
+}
+
+export function resolveThemePrimaryColor(themeName: string, mode: string, value: string | null | undefined): string {
+    const normalizedValue = normalizeThemePrimarySetting(themeName, value)
+    if (themeName !== 'stitchlab') return normalizedValue
+
+    const optionKey = getStitchlabPrimaryOptionKey(normalizedValue)
+    const option = getStitchlabPrimaryOptionByKey(optionKey)
+
+    if (!option) return normalizedValue
+
+    return mode === 'dark' ? option.dark : option.light
+}
 
 export const minKlipperVersion = 'v0.11.0-257'
 export const minMoonrakerVersion = 'v0.8.0-306'
@@ -20,7 +132,17 @@ export const themeDir = '.theme'
 export const datasetInterval = 1000
 export const datasetTypes = ['temperature', 'target', 'power', 'speed']
 export const datasetTypesInPercents = ['power', 'speed']
-export const additionalSensors = ['aht10', 'aht1x', 'aht2x', 'aht3x', 'bme280', 'htu21d', 'sgp40', 'sht3x', 'temperature_combined']
+export const additionalSensors = [
+    'aht10',
+    'aht1x',
+    'aht2x',
+    'aht3x',
+    'bme280',
+    'htu21d',
+    'sgp40',
+    'sht3x',
+    'temperature_combined',
+]
 
 /*
  * List of valid gcode file extensions
@@ -218,7 +340,7 @@ export const themes: Theme[] = [
         name: 'stitchlab',
         displayName: 'StitchLab',
         colorLogo: '#4c4f69',
-        colorPrimary: '#1e66f5',
+        colorPrimary: stitchlabDefaultPrimary,
         logo: { show: true, light: false },
         css: true,
     },
