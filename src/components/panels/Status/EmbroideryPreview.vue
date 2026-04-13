@@ -136,7 +136,7 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
         if (this.cachedGcode && this.parsed) {
             const stitchColor = this.stitchColors[0] ?? '#E76F51'
             this.parsed = parseEmbroideryGcode(this.cachedGcode, stitchColor)
-            this.render()
+            this.drawCanvas()
         }
     }
 
@@ -149,7 +149,7 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
 
         this.resizeObserver = new ResizeObserver(() => {
             this.resizeCanvas()
-            this.render()
+            this.drawCanvas()
         })
         if (this.canvasWrapper) {
             this.resizeObserver.observe(this.canvasWrapper)
@@ -219,7 +219,7 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
 
             this.$nextTick(() => {
                 this.resizeCanvas()
-                this.render()
+                this.drawCanvas()
             })
         } catch (error) {
             window.console.error('EmbroideryPreview: failed to load G-Code', error)
@@ -249,11 +249,11 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
         if (this.renderThrottleId !== null) return
         this.renderThrottleId = requestAnimationFrame(() => {
             this.renderThrottleId = null
-            this.render()
+            this.drawCanvas()
         })
     }
 
-    render(): void {
+    drawCanvas(): void {
         if (!this.canvas || !this.parsed) return
         const ctx = this.canvas.getContext('2d')
         if (!ctx) return
@@ -271,25 +271,41 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
         const fw = this.frameWidth
         const fh = this.frameHeight
 
-        // Calculate scale to fit frame in canvas
-        const scaleX = (canvasW - padding * 2) / fw
-        const scaleY = (canvasH - padding * 2) / fh
+        // Compute bounding box that fits both the frame and the design
+        const dc = this.parsed.designCenter
+        const dw = this.parsed.designWidth
+        const dh = this.parsed.designHeight
+        const ox = this.designOffsetX
+        const oy = this.designOffsetY
+
+        // Frame spans (0,0)–(fw,fh); design bounds in the same coord space
+        const viewMinX = Math.min(0, dc.x + ox - dw / 2)
+        const viewMaxX = Math.max(fw, dc.x + ox + dw / 2)
+        const viewMinY = Math.min(0, dc.y + oy - dh / 2)
+        const viewMaxY = Math.max(fh, dc.y + oy + dh / 2)
+        const viewW = viewMaxX - viewMinX
+        const viewH = viewMaxY - viewMinY
+
+        // Scale to fit the combined view
+        const scaleX = (canvasW - padding * 2) / viewW
+        const scaleY = (canvasH - padding * 2) / viewH
         const scale = Math.min(scaleX, scaleY)
+
+        // View center in design coordinates
+        const vcx = (viewMinX + viewMaxX) / 2
+        const vcy = (viewMinY + viewMaxY) / 2
 
         const cx = canvasW / 2
         const cy = canvasH / 2
 
         // Draw frame border
         if (this.showFrameBorder) {
+            const frameLeft = cx + (0 - vcx) * scale
+            const frameTop = cy - (fh - vcy) * scale
             ctx.strokeStyle = this.frameColor
             ctx.lineWidth = 1.5
             ctx.setLineDash([6, 4])
-            ctx.strokeRect(
-                cx - (fw * scale) / 2,
-                cy - (fh * scale) / 2,
-                fw * scale,
-                fh * scale
-            )
+            ctx.strokeRect(frameLeft, frameTop, fw * scale, fh * scale)
             ctx.setLineDash([])
         }
 
@@ -297,14 +313,14 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
         const currentMoveIndex = this.isPrinting ? this.filePositionToMoveIndex(this.filePosition) : renderLines.length
 
         // Draw stitch paths
-        this.drawStitchPaths(ctx, renderLines, treatG0AsStitch, currentMoveIndex, fw, fh, scale, cx, cy, false)
+        this.drawStitchPaths(ctx, renderLines, treatG0AsStitch, currentMoveIndex, vcx, vcy, scale, cx, cy, false)
         if (this.isPrinting && currentMoveIndex < renderLines.length) {
-            this.drawStitchPaths(ctx, renderLines, treatG0AsStitch, renderLines.length, fw, fh, scale, cx, cy, true)
+            this.drawStitchPaths(ctx, renderLines, treatG0AsStitch, renderLines.length, vcx, vcy, scale, cx, cy, true)
         }
 
         // Draw needle position when printing
         if (this.isPrinting) {
-            this.drawNeedle(ctx, fw, fh, scale, cx, cy)
+            this.drawNeedle(ctx, vcx, vcy, scale, cx, cy)
         }
     }
 
@@ -313,7 +329,7 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
         renderLines: RenderLine[],
         treatG0AsStitch: boolean,
         upToIndex: number,
-        fw: number, fh: number,
+        vcx: number, vcy: number,
         scale: number,
         cx: number, cy: number,
         faded: boolean
@@ -340,15 +356,15 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
             ctx.lineWidth = faded ? 0.8 : 1.5
             ctx.beginPath()
 
-            const from = this.toCanvas(rl.line.start, fw, fh, scale, cx, cy)
-            const to = this.toCanvas(rl.line.end, fw, fh, scale, cx, cy)
+            const from = this.toCanvas(rl.line.start, vcx, vcy, scale, cx, cy)
+            const to = this.toCanvas(rl.line.end, vcx, vcy, scale, cx, cy)
 
             if (rl.line.beziers && rl.line.beziers.length > 0) {
                 ctx.moveTo(from.x, from.y)
                 for (const b of rl.line.beziers) {
-                    const p1 = this.toCanvas(b.p1, fw, fh, scale, cx, cy)
-                    const p2 = this.toCanvas(b.p2, fw, fh, scale, cx, cy)
-                    const p3 = this.toCanvas(b.p3, fw, fh, scale, cx, cy)
+                    const p1 = this.toCanvas(b.p1, vcx, vcy, scale, cx, cy)
+                    const p2 = this.toCanvas(b.p2, vcx, vcy, scale, cx, cy)
+                    const p3 = this.toCanvas(b.p3, vcx, vcy, scale, cx, cy)
                     ctx.bezierCurveTo(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y)
                 }
             } else {
@@ -361,13 +377,13 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
 
     drawNeedle(
         ctx: CanvasRenderingContext2D,
-        fw: number, fh: number,
+        vcx: number, vcy: number,
         scale: number,
         cx: number, cy: number
     ): void {
         const x = this.toolheadPosition[0] ?? 0
         const y = this.toolheadPosition[1] ?? 0
-        const pos = this.toCanvas({ x, y }, fw, fh, scale, cx, cy)
+        const pos = this.toCanvas({ x, y }, vcx, vcy, scale, cx, cy)
 
         const r = 4
         // Outer circle
@@ -399,17 +415,16 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
 
     toCanvas(
         pt: { x: number; y: number },
-        fw: number, fh: number,
+        vcx: number, vcy: number,
         scale: number,
         cx: number, cy: number
     ): { x: number; y: number } {
-        // G-Code origin maps to frame center (0,0) — design coords are relative to frame center
-        // Apply designOffset from GCode Studio settings
+        // Map design coordinates to canvas, centered on the combined view center
         const x = pt.x + this.designOffsetX
         const y = pt.y + this.designOffsetY
         return {
-            x: cx + (x - fw / 2) * scale,
-            y: cy - (y - fh / 2) * scale, // Y inverted
+            x: cx + (x - vcx) * scale,
+            y: cy - (y - vcy) * scale, // Y inverted
         }
     }
 

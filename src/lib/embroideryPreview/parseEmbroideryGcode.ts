@@ -190,7 +190,7 @@ export function parseEmbroideryGcode(gcode: string, stitchColor?: string): Parse
         return null
     }
 
-    const unitScale = geometry.displayInInch ? 25.4 : 1
+    const unitScale = geometry.displayInInch === false ? 25.4 : 1
     const scalePoint = (point: GCodeGeometryPoint): GCodeGeometryPoint => ({
         x: point.x * unitScale,
         y: point.y * unitScale,

@@ -145,9 +145,8 @@ export default class App extends Mixins(BaseMixin, ThemeMixin) {
     }
 
     get cssVars(): { [key: string]: string } {
-        return {
+        const vars: { [key: string]: string } = {
             '--v-btn-text-primary': this.primaryTextColor,
-            '--color-logo': this.logoColor,
             '--color-primary': this.primaryColor,
             '--color-warning': this.warningColor,
             '--panel-toolbar-icon-btn-width': panelToolbarHeight + 'px',
@@ -155,6 +154,14 @@ export default class App extends Mixins(BaseMixin, ThemeMixin) {
             '--topbar-icon-btn-width': topbarHeight + 'px',
             '--sidebar-menu-item-height': navigationItemHeight + 'px',
         }
+
+        // Only set --color-logo when no CSS theme is active;
+        // CSS themes define it per dark/light mode themselves
+        if (!this.themeCss) {
+            vars['--color-logo'] = this.logoColor
+        }
+
+        return vars
     }
 
     get print_percent(): number {
