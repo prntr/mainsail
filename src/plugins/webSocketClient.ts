@@ -15,6 +15,7 @@ export class WebSocketClient {
     store: Store<RootState> | null = null
     waits: Wait[] = []
     heartbeatTimer: number | null = null
+    keepaliveTimer: number | null = null
 
     constructor(options: WebSocketPluginOptions) {
         this.url = options.url
@@ -100,19 +101,28 @@ export class WebSocketClient {
 
         this.instance.onopen = () => {
             this.reconnects = 0
+            this.heartbeat()
+            this.startKeepalive()
             this.store?.dispatch('socket/onOpen', event)
         }
 
         this.instance.onclose = (e) => {
-            if (e.wasClean || this.reconnects >= this.maxReconnects) {
+            this.stopKeepalive()
+            if (this.heartbeatTimer) {
+                clearTimeout(this.heartbeatTimer)
+                this.heartbeatTimer = null
+            }
+
+            if (e.wasClean) {
                 this.store?.dispatch('socket/onClose', e)
                 return
             }
 
+            const delay = Math.min(30000, this.reconnectInterval * Math.pow(2, Math.min(this.reconnects, 5)))
             this.reconnects++
             setTimeout(() => {
                 this.connect()
-            }, this.reconnectInterval)
+            }, delay)
         }
 
         this.instance.onerror = () => {
@@ -148,7 +158,7 @@ export class WebSocketClient {
 
     removeWaitById(id: number | null): void {
         const index = this.waits.findIndex((wait: Wait) => wait.id === id)
-        if (index) {
+        if (index !== -1) {
             const wait = this.waits[index]
             if (wait.loading) this.store?.dispatch('socket/removeLoading', { name: wait.loading })
             this.waits.splice(index, 1)
@@ -243,6 +253,21 @@ export class WebSocketClient {
             this.close()
             this.store?.dispatch('socket/onClose')
         }, 30000)
+    }
+
+    startKeepalive(): void {
+        this.stopKeepalive()
+        this.keepaliveTimer = window.setInterval(() => {
+            if (this.instance?.readyState !== WebSocket.OPEN) return
+            this.emit('server.info', {})
+        }, 10000)
+    }
+
+    stopKeepalive(): void {
+        if (this.keepaliveTimer) {
+            clearInterval(this.keepaliveTimer)
+            this.keepaliveTimer = null
+        }
     }
 }
 
