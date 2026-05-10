@@ -73,15 +73,16 @@ export default class StatusPanelPrintstatusEmbroidery extends Mixins(BaseMixin) 
         return this.isNeedleDown ? 'warning--text' : 'success--text'
     }
 
-    /**
-     * Embroidery stats shared by EmbroideryPreview via the store.
+    /*
+     * Embroidery stats are sourced from Moonraker file metadata
+     * (printer.current_file) when available. Per P0-4 of the
+     * Cross-Platform Mainsail Stability plan, the dashboard does NOT
+     * parse the active G-Code file in the browser to compute stitch
+     * counts \u2014 anything missing falls back to lightweight Moonraker
+     * progress.
      */
-    get embroideryStats() {
-        return this.$store.state.printer.embroidery_stats ?? null
-    }
-
-    get filePosition(): number {
-        return this.$store.state.printer.virtual_sdcard?.file_position ?? 0
+    get currentFile() {
+        return this.$store.state.printer.current_file ?? null
     }
 
     get printProgress(): number {
@@ -89,48 +90,28 @@ export default class StatusPanelPrintstatusEmbroidery extends Mixins(BaseMixin) 
     }
 
     get stitchCount(): number {
-        return this.embroideryStats?.stitchCount ?? 0
+        const meta: any = this.currentFile
+        return meta?.stitchlab_intake?.stitchCount ?? meta?.stitch_count ?? 0
+    }
+
+    get jumpCount(): number {
+        const meta: any = this.currentFile
+        return meta?.stitchlab_intake?.jumpCount ?? meta?.jump_count ?? 0
     }
 
     get currentStitchIndex(): number {
-        if (!this.embroideryStats) return 0
-
-        const moveOffsets: number[] = this.embroideryStats.moveOffsets ?? []
-        const stitchIndices: number[] = this.embroideryStats.stitchPointMoveIndices ?? []
-
-        if (!moveOffsets.length || !stitchIndices.length) {
-            // Fallback: estimate from progress
-            if (!this.stitchCount) return 0
-            return Math.round(this.printProgress * this.stitchCount)
-        }
-
-        // Find current move index from file position
-        let moveIndex = 0
-        for (let i = 0; i < moveOffsets.length; i++) {
-            if (moveOffsets[i] <= this.filePosition) moveIndex = i
-            else break
-        }
-
-        // Count stitches up to current move
-        let count = 0
-        for (const idx of stitchIndices) {
-            if (idx <= moveIndex) count++
-            else break
-        }
-        return count
+        if (!this.stitchCount) return 0
+        return Math.round(this.printProgress * this.stitchCount)
     }
 
     get progressPercent(): number {
         return Math.min(100, Math.round(this.printProgress * 100))
     }
 
-    get jumpCount(): number {
-        return this.embroideryStats?.jumpCount ?? 0
-    }
-
     get designDimensions(): string {
-        const w = this.embroideryStats?.designWidth ?? 0
-        const h = this.embroideryStats?.designHeight ?? 0
+        const meta: any = this.currentFile
+        const w = meta?.stitchlab_intake?.designWidth ?? meta?.design_width ?? 0
+        const h = meta?.stitchlab_intake?.designHeight ?? meta?.design_height ?? 0
         if (!w && !h) return '--'
         return `${w.toFixed(0)} \u00d7 ${h.toFixed(0)} mm`
     }
