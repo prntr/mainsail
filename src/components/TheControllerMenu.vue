@@ -259,10 +259,13 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
 
     showMenu = false
 
-    mounted() {
-        // Initialize WebSocket connection to live_jogd
-        this.$store.dispatch('server/controller/initWebSocket')
-    }
+    // No auto-connect on mount. The live_jogd service is installed but not
+    // started by default — connecting to :7150 here would either spam
+    // reconnects on every page load or contribute to the ~30 req/s
+    // background load reported in the Cross-Platform Stability plan
+    // (P0-2). The user explicitly initialises the controller via the
+    // Play button below, which starts the systemd service and only then
+    // opens the WebSocket.
 
     get wsConnected(): boolean {
         return this.$store.state.server.controller?.websocket_connected ?? false
@@ -360,6 +363,10 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
     startService(): void {
         this.$store.dispatch('socket/addLoading', { name: 'controllerStart' })
         this.$socket.emit('machine.services.start', { service: 'live_jogd' }, { action: 'server/serviceStarted' })
+        // Open the live_jogd WebSocket. The first attempts may fail while
+        // the systemd service starts up; the client's exponential backoff
+        // handles the wait.
+        this.$store.dispatch('server/controller/initWebSocket')
         setTimeout(() => {
             this.$store.dispatch('socket/removeLoading', { name: 'controllerStart' })
         }, 3000)
@@ -368,6 +375,9 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
     stopService(): void {
         this.$store.dispatch('socket/addLoading', { name: 'controllerStop' })
         this.$socket.emit('machine.services.stop', { service: 'live_jogd' }, { action: 'server/serviceStopped' })
+        // Close the WebSocket and cancel reconnect timers — the systemd
+        // service is stopping, so further :7150 traffic would be noise.
+        this.$store.dispatch('server/controller/teardownWebSocket')
         setTimeout(() => {
             this.$store.dispatch('socket/removeLoading', { name: 'controllerStop' })
         }, 3000)
@@ -376,6 +386,9 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
     restartService(): void {
         this.$store.dispatch('socket/addLoading', { name: 'controllerRestart' })
         this.$socket.emit('machine.services.restart', { service: 'live_jogd' }, { action: 'server/serviceRestarted' })
+        // Tear down the existing socket and reconnect after the restart.
+        this.$store.dispatch('server/controller/teardownWebSocket')
+        this.$store.dispatch('server/controller/initWebSocket')
         setTimeout(() => {
             this.$store.dispatch('socket/removeLoading', { name: 'controllerRestart' })
         }, 3000)

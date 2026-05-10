@@ -8,12 +8,17 @@
  *
  * INTEGRATION STATUS:
  *   - WebSocket client (controllerWebSocket.ts): COMPLETE
- *   - WebSocket server in live_jogd: NOT IMPLEMENTED
- *   - Workaround: Use CLI (dongle_api.py) or physical controller
+ *   - WebSocket server in live_jogd: COMPLETE (live_jogd.py serves :7150)
+ *
+ *   The live_jogd service is installed but not auto-started. The Mainsail
+ *   Controller menu starts it on demand via Moonraker
+ *   `machine.services.start { service: "live_jogd" }`. The WebSocket
+ *   client is connected only after the user clicks Initialize/Play, and
+ *   torn down again when the user stops the service.
  *
  * PROTOCOL NOTES:
- *   The actual dongle uses a binary serial protocol. If a WebSocket bridge is added to live_jogd,
- *   it should translate between JSON (browser) and binary (dongle). Field mappings:
+ *   The dongle uses a binary serial protocol. live_jogd translates between
+ *   JSON (browser) and binary (dongle). Field mappings:
  *
  *   | Frontend Field       | Dongle Field              | Conversion                    |
  *   |----------------------|---------------------------|-------------------------------|
