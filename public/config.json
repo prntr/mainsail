@@ -3,7 +3,7 @@
     "defaultMode": "light",
     "defaultTheme": "stitchlab",
     "hostname": null,
-    "port": 7125,
+    "port": null,
     "path": null,
     "instancesDB": "moonraker",
     "instances": []
