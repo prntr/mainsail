@@ -24,7 +24,8 @@
                 <v-btn
                     color="primary"
                     text
-                    :disabled="printerIsPrinting || !klipperReadyForGui"
+                    :disabled="printerIsPrinting || !klipperReadyForGui || isPreparing"
+                    :loading="isPreparing"
                     @click="startPrint(file.filename)">
                     {{ $t('Dialogs.StartPrint.Print') }}
                 </v-btn>
@@ -47,6 +48,7 @@ import AfcMixin from '@/components/mixins/afc'
 })
 export default class StartPrintDialog extends Mixins(BaseMixin, AfcMixin) {
     mdiPrinter3d = mdiPrinter3d
+    isPreparing = false
 
     @Prop({ required: true, default: false }) readonly bool!: boolean
     @Prop({ required: true, default: '' }) readonly currentPath!: string
@@ -81,10 +83,19 @@ export default class StartPrintDialog extends Mixins(BaseMixin, AfcMixin) {
         return this.$t('Dialogs.StartPrint.DoYouWantToStartFilename', { filename: this.file?.filename ?? 'unknown' })
     }
 
-    startPrint(filename = '') {
+    async startPrint(filename = '') {
         filename = (this.currentPath + '/' + filename).substring(1)
-        this.closeDialog()
-        this.$socket.emit('printer.print.start', { filename: filename }, { action: 'switchToDashboard' })
+        this.isPreparing = true
+        try {
+            const started = await this.$store.dispatch('stitchlabIntake/startPrint', {
+                filename,
+                action: 'switchToDashboard',
+                loading: 'stitchlabIntakeStartPrint',
+            })
+            if (started) this.closeDialog()
+        } finally {
+            this.isPreparing = false
+        }
     }
 
     closeDialog() {

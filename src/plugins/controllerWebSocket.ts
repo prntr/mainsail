@@ -1,5 +1,6 @@
 import { Store } from 'vuex'
 import { RootState } from '@/store/types'
+import type { ControllerType } from '@/store/server/controller/types'
 
 export class ControllerWebSocketClient {
     private url: string
@@ -140,6 +141,8 @@ export class ControllerWebSocketClient {
             wifi: 'controllerWifi',
             pairing: 'controllerPairing',
             select_controller: 'controllerSelect',
+            live_control: 'controllerLiveControl',
+            controller_type: 'controllerType',
         }
 
         const loadingName = loadingMap[command]
@@ -167,6 +170,16 @@ export class ControllerWebSocketClient {
     selectController(slotId: number): void {
         this.store.dispatch('socket/addLoading', { name: 'controllerSelect' })
         this.send({ type: 'select_controller', value: slotId })
+    }
+
+    setLiveControl(enabled: boolean): void {
+        this.store.dispatch('socket/addLoading', { name: 'controllerLiveControl' })
+        this.send({ type: 'live_control', value: enabled })
+    }
+
+    setControllerType(slotId: number, controllerType: ControllerType): void {
+        this.store.dispatch('socket/addLoading', { name: 'controllerType' })
+        this.send({ type: 'set_controller_type', slot_id: slotId, controller_type: controllerType })
     }
 
     setLedBrightness(brightness: number): void {

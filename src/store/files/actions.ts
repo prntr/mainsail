@@ -13,6 +13,12 @@ import { hiddenDirectories, validGcodeExtensions } from '@/store/variables'
 import axios, { AxiosProgressEvent } from 'axios'
 import { BatchMessage } from '@/plugins/webSocketClient'
 
+function isGcodesFileItem(item: any): boolean {
+    if (item?.root !== 'gcodes') return false
+    const extension = item.path?.slice(item.path.lastIndexOf('.')) ?? ''
+    return validGcodeExtensions.includes(extension)
+}
+
 export const actions: ActionTree<FileState, RootState> = {
     reset({ commit }) {
         commit('reset')
@@ -193,7 +199,10 @@ export const actions: ActionTree<FileState, RootState> = {
         commit('setMetadata', payload)
     },
 
-    getMetadataCurrentFile({ commit }, payload) {
+    getMetadataCurrentFile({ commit, rootState }, payload) {
+        const existingIntake = rootState.printer?.current_file?.stitchlab_intake ?? null
+        if (existingIntake && existingIntake.filename === payload.filename) payload.stitchlab_intake = existingIntake
+
         commit('printer/clearCurrentFile', null, { root: true })
         commit('printer/setData', { current_file: payload }, { root: true })
     },
@@ -202,6 +211,9 @@ export const actions: ActionTree<FileState, RootState> = {
         switch (payload.action) {
             case 'create_file':
                 commit('setCreateFile', payload)
+                if (isGcodesFileItem(payload.item)) {
+                    dispatch('stitchlabIntake/clearFile', payload.item.path, { root: true })
+                }
                 break
 
             case 'move_file':
@@ -213,6 +225,12 @@ export const actions: ActionTree<FileState, RootState> = {
 
                 // move all other files
                 await commit('setMoveFile', payload)
+                if (isGcodesFileItem(payload.source_item)) {
+                    dispatch('stitchlabIntake/clearFile', payload.source_item.path, { root: true })
+                }
+                if (isGcodesFileItem(payload.item)) {
+                    dispatch('stitchlabIntake/clearFile', payload.item.path, { root: true })
+                }
                 if (
                     payload.item.root === 'gcodes' &&
                     validGcodeExtensions.includes(payload.item.path.slice(payload.item.path.lastIndexOf('.')))
@@ -227,10 +245,16 @@ export const actions: ActionTree<FileState, RootState> = {
 
             case 'delete_file':
                 commit('setDeleteFile', payload)
+                if (isGcodesFileItem(payload.item)) {
+                    dispatch('stitchlabIntake/clearFile', payload.item.path, { root: true })
+                }
                 break
 
             case 'modify_file':
                 commit('setModifyFile', payload)
+                if (isGcodesFileItem(payload.item)) {
+                    dispatch('stitchlabIntake/clearFile', payload.item.path, { root: true })
+                }
                 break
 
             case 'create_dir':

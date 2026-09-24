@@ -91,12 +91,17 @@ export default class StatusPanelPrintstatusEmbroidery extends Mixins(BaseMixin) 
 
     get stitchCount(): number {
         const meta: any = this.currentFile
-        return meta?.stitchlab_intake?.stitchCount ?? meta?.stitch_count ?? 0
+        return (
+            meta?.stitchlab_intake?.stitchCount ??
+            meta?.stitchlab_intake?.stats?.stitch_count ??
+            meta?.stitch_count ??
+            0
+        )
     }
 
     get jumpCount(): number {
         const meta: any = this.currentFile
-        return meta?.stitchlab_intake?.jumpCount ?? meta?.jump_count ?? 0
+        return meta?.stitchlab_intake?.jumpCount ?? meta?.stitchlab_intake?.stats?.jump_count ?? meta?.jump_count ?? 0
     }
 
     get currentStitchIndex(): number {
@@ -110,8 +115,10 @@ export default class StatusPanelPrintstatusEmbroidery extends Mixins(BaseMixin) 
 
     get designDimensions(): string {
         const meta: any = this.currentFile
-        const w = meta?.stitchlab_intake?.designWidth ?? meta?.design_width ?? 0
-        const h = meta?.stitchlab_intake?.designHeight ?? meta?.design_height ?? 0
+        const w =
+            meta?.stitchlab_intake?.designWidth ?? meta?.stitchlab_intake?.bounds?.width ?? meta?.design_width ?? 0
+        const h =
+            meta?.stitchlab_intake?.designHeight ?? meta?.stitchlab_intake?.bounds?.height ?? meta?.design_height ?? 0
         if (!w && !h) return '--'
         return `${w.toFixed(0)} \u00d7 ${h.toFixed(0)} mm`
     }

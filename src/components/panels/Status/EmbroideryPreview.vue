@@ -25,9 +25,8 @@
  * the browser main thread. It only renders:
  *
  *   - the selected hoop / usable area outline,
- *   - a finished-design thumbnail (current_file.thumbnails[*]) when
- *     Moonraker exposes one, positioned at the configured design
- *     placement offset,
+ *   - a StitchLab intake thumbnail (current_file.stitchlab_intake.thumbnail)
+ *     when available, with Moonraker thumbnails as fallback,
  *   - a lightweight filename / progress overlay.
  *
  * When no thumbnail is available the canvas falls back to a
@@ -108,8 +107,27 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
         return this.$store.state.gui.gcodeStudio?.showFrameBorder ?? true
     }
 
+    get intakeThumbnail(): any {
+        const thumb = (this.currentFile as any)?.stitchlab_intake?.thumbnail ?? null
+        if (!thumb || !thumb.relative_path) return null
+        return thumb
+    }
+
+    get usesIntakeThumbnail(): boolean {
+        return this.intakeThumbnail !== null
+    }
+
     get computedThumbUrl(): string {
         const cf: any = this.currentFile
+        const intakeThumb = this.intakeThumbnail
+        if (intakeThumb) {
+            const rel = String(intakeThumb.relative_path)
+                .replace(/^\/+/, '')
+                .replace(/^gcodes\//i, '')
+            const stamp = cf?.stitchlab_intake?.preview_key ?? cf?.modified ?? 0
+            return `${this.apiUrl}/server/files/gcodes/${escapePath(rel)}?timestamp=${encodeURIComponent(stamp)}`
+        }
+
         if (!cf || !Array.isArray(cf.thumbnails) || cf.thumbnails.length === 0) return ''
         const thumb =
             cf.thumbnails.find((t: any) => t.width >= THUMB_MIN_WIDTH) ?? cf.thumbnails[cf.thumbnails.length - 1]
@@ -225,7 +243,12 @@ export default class EmbroideryPreview extends Mixins(BaseMixin) {
         const frameLeft = (w - fw * scale) / 2
         const frameTop = (h - fh * scale) / 2
 
-        if (this.thumbImage) {
+        if (this.thumbImage && this.usesIntakeThumbnail) {
+            const side = Math.max(fw, fh) * scale
+            const x = frameLeft + (fw * scale - side) / 2
+            const y = frameTop + (fh * scale - side) / 2
+            ctx.drawImage(this.thumbImage, x, y, side, side)
+        } else if (this.thumbImage) {
             // Without intake metadata for physical design dimensions the
             // thumbnail is drawn to fit inside the hoop (90% of the
             // shorter axis) centred on the configured placement offset.

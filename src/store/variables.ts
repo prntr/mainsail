@@ -211,6 +211,7 @@ export const allowedMetadata = [
     'size',
     'slicer',
     'slicer_version',
+    'stitchlab_intake',
     'thumbnails',
 ]
 

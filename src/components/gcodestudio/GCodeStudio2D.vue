@@ -623,12 +623,30 @@ import {
 } from '@mdi/js'
 import { sha256 } from 'js-sha256'
 import { defaultMode, getStitchlabGcodeStudioPalette } from '@/store/variables'
+import stitchlabStandardFrameGeometryAsset from '@/assets/stitchlab/standard-frame.json'
 
 interface FramePreset {
     id: string
     name: string
     width: number
     height: number
+    geometryId?: string
+}
+
+type FrameGeometryPoint = [number, number]
+
+interface FrameGeometry {
+    id: string
+    bounds_mm: {
+        min_x: number
+        max_x: number
+        min_y: number
+        max_y: number
+        width: number
+        height: number
+    }
+    outline: FrameGeometryPoint[][]
+    stitch_area: FrameGeometryPoint[][]
 }
 
 interface GCodeGeometryPoint {
@@ -666,6 +684,8 @@ interface GCodeGeometryResult extends GCodeGeometry {
 interface GCodeToGeometryApi {
     parse: (gcode: string) => GCodeGeometry
 }
+
+const stitchlabStandardFrameGeometry = stitchlabStandardFrameGeometryAsset as unknown as FrameGeometry
 
 interface RenderLine {
     line: GCodeGeometryLine
@@ -811,6 +831,13 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     isSyncingEditor = false
 
     framePresets: FramePreset[] = [
+        {
+            id: 'standard',
+            name: 'StitchLab standard (80x130mm)',
+            width: 80,
+            height: 130,
+            geometryId: stitchlabStandardFrameGeometry.id,
+        },
         { id: '4x4', name: '4" x 4" (100mm)', width: 100, height: 100 },
         { id: '5x7', name: '5" x 7" (127x178mm)', width: 127, height: 178 },
         { id: '6x10', name: '6" x 10" (150x250mm)', width: 150, height: 250 },
@@ -1105,11 +1132,20 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     get selectedFramePreset() {
-        return this.$store.state.gui.gcodeStudio?.framePreset ?? '4x4'
+        return this.$store.state.gui.gcodeStudio?.framePreset ?? 'standard'
     }
 
     set selectedFramePreset(newVal) {
         this.$store.dispatch('gui/saveSetting', { name: 'gcodeStudio.framePreset', value: newVal })
+    }
+
+    get activeFramePreset(): FramePreset | undefined {
+        return this.framePresets.find((preset) => preset.id === this.selectedFramePreset)
+    }
+
+    get activeFrameGeometry(): FrameGeometry | null {
+        if (this.activeFramePreset?.geometryId === stitchlabStandardFrameGeometry.id) return stitchlabStandardFrameGeometry
+        return null
     }
 
     get designOffsetX(): number {
@@ -1564,6 +1600,12 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         if (!this.showFrameBorder) return
 
         this.layers.frame.activate()
+        const frameGeometry = this.activeFrameGeometry
+        if (frameGeometry) {
+            this.renderFrameGeometry(frameGeometry)
+            return
+        }
+
         const halfW = this.frameWidth / 2
         const halfH = this.frameHeight / 2
         const rect = new this.paperScope.Path.Rectangle(
@@ -1574,6 +1616,33 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         rect.strokeWidth = 0.75
         rect.dashArray = [3, 2]
         rect.fillColor = null
+    }
+
+    renderFrameGeometry(frameGeometry: FrameGeometry): void {
+        if (!this.paperScope) return
+
+        const outlineColor = new this.paperScope.Color(this.frameColor)
+        outlineColor.alpha = 0.55
+        const stitchAreaColor = new this.paperScope.Color(this.frameColor)
+        stitchAreaColor.alpha = 0.9
+
+        const drawPolyline = (
+            polyline: FrameGeometryPoint[],
+            strokeColor: paper.Color,
+            strokeWidth: number,
+            dashArray?: number[]
+        ) => {
+            if (polyline.length < 2 || !this.paperScope) return
+            const path = new this.paperScope.Path()
+            for (const [x, y] of polyline) path.add(this.toPoint({ x, y }))
+            path.strokeColor = strokeColor
+            path.strokeWidth = strokeWidth
+            if (dashArray) path.dashArray = dashArray
+            path.fillColor = null
+        }
+
+        for (const polyline of frameGeometry.outline ?? []) drawPolyline(polyline, outlineColor, 0.18)
+        for (const polyline of frameGeometry.stitch_area ?? []) drawPolyline(polyline, stitchAreaColor, 0.3, [3, 2])
     }
 
     renderFrameAndGrid(): void {
@@ -1736,6 +1805,19 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         return parts.slice(0, -1).join('/')
     }
 
+    buildStartPlacement(includeDesignTransform = true) {
+        return {
+            hoop_id: this.selectedFramePreset || 'standard',
+            offset_x: includeDesignTransform ? this.designOffsetX : 0,
+            offset_y: includeDesignTransform ? this.designOffsetY : 0,
+            rotation_deg: includeDesignTransform ? this.rotationDeg : 0,
+            scale: 1,
+            pivot: includeDesignTransform ? this.rotationPivot : 'design',
+            frame_width_mm: this.frameWidth,
+            frame_height_mm: this.frameHeight,
+        }
+    }
+
     async uploadTransformedGcode(): Promise<void> {
         if (!this.canExportRepositioned || this.repositionedActionBusy) return
         this.isUploadingRepositioned = true
@@ -1777,7 +1859,12 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 
             if (result !== false) {
                 const startPath = path ? `${path}/${result}` : result
-                this.$socket.emit('printer.print.start', { filename: startPath }, { action: 'switchToDashboard' })
+                await this.$store.dispatch('stitchlabIntake/startPrint', {
+                    filename: startPath,
+                    placement: this.buildStartPlacement(false),
+                    action: 'switchToDashboard',
+                    loading: 'stitchlabIntakeStartPrint',
+                })
             }
         } finally {
             this.isStartingRepositioned = false
@@ -1946,7 +2033,12 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 
             if (result !== false) {
                 const startPath = path ? `${path}/${result}` : result
-                this.$socket.emit('printer.print.start', { filename: startPath }, { action: 'switchToDashboard' })
+                await this.$store.dispatch('stitchlabIntake/startPrint', {
+                    filename: startPath,
+                    placement: this.buildStartPlacement(true),
+                    action: 'switchToDashboard',
+                    loading: 'stitchlabIntakeStartPrint',
+                })
             }
         } finally {
             this.isStartingEdited = false
@@ -2111,11 +2203,12 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     fitToFrame(): void {
         if (!this.paperScope) return
 
-        const width = this.frameWidth || this.designWidth || 100
-        const height = this.frameHeight || this.designHeight || 100
+        const bounds = this.getFrameViewBounds()
+        const width = bounds.width || this.designWidth || 100
+        const height = bounds.height || this.designHeight || 100
         const zoom = this.getZoomForSize(width, height)
         this.paperScope.view.zoom = zoom
-        this.paperScope.view.center = new this.paperScope.Point(0, 0)
+        this.paperScope.view.center = new this.paperScope.Point(bounds.centerX, -bounds.centerY)
     }
 
     fitToDesign(): void {
@@ -2151,18 +2244,38 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 
         const frameWidth = this.frameWidth || 100
         const frameHeight = this.frameHeight || 100
+        const frameBounds = this.getFrameViewBounds()
         const designWidth = this.designWidth || frameWidth
         const designHeight = this.designHeight || frameHeight
-        const frameZoom = this.getZoomForSize(frameWidth, frameHeight)
+        const frameZoom = this.getZoomForSize(frameBounds.width || frameWidth, frameBounds.height || frameHeight)
         const designZoom = this.getZoomForSize(designWidth, designHeight)
 
         this.paperScope.view.zoom = Math.min(frameZoom, designZoom)
-        this.paperScope.view.center = new this.paperScope.Point(0, 0)
+        this.paperScope.view.center = new this.paperScope.Point(frameBounds.centerX, -frameBounds.centerY)
     }
 
     getZoomForSize(width: number, height: number): number {
         if (!this.paperScope) return 1
         return Math.min(this.paperScope.view.size.width / width, this.paperScope.view.size.height / height) * 0.9
+    }
+
+    getFrameViewBounds(): { width: number; height: number; centerX: number; centerY: number } {
+        const geometry = this.activeFrameGeometry
+        if (geometry?.bounds_mm) {
+            return {
+                width: geometry.bounds_mm.width,
+                height: geometry.bounds_mm.height,
+                centerX: (geometry.bounds_mm.min_x + geometry.bounds_mm.max_x) / 2,
+                centerY: (geometry.bounds_mm.min_y + geometry.bounds_mm.max_y) / 2,
+            }
+        }
+
+        return {
+            width: this.frameWidth || 100,
+            height: this.frameHeight || 100,
+            centerX: 0,
+            centerY: 0,
+        }
     }
 
     toggleScrubPlayback(): void {

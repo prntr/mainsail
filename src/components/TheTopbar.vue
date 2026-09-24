@@ -263,7 +263,7 @@ export default class TheTopbar extends Mixins(BaseMixin, ThemeMixin) {
             let successFiles = []
             for (const file of this.$refs.fileUploadAndStart?.files || []) {
                 const result = await this.doUploadAndStart(file)
-                successFiles.push(result)
+                if (result) successFiles.push(result)
             }
 
             await this.$store.dispatch('socket/removeLoading', { name: 'btnUploadAndStart' })
@@ -287,7 +287,8 @@ export default class TheTopbar extends Mixins(BaseMixin, ThemeMixin) {
         this.uploadSnackbar.speed = 0
 
         formData.append('file', file, filename)
-        formData.append('print', 'true')
+        formData.append('root', 'gcodes')
+        formData.append('path', '')
 
         return new Promise((resolve) => {
             this.uploadSnackbar.cancelTokenSource = axios.CancelToken.source()
@@ -301,15 +302,28 @@ export default class TheTopbar extends Mixins(BaseMixin, ThemeMixin) {
                         this.uploadSnackbar.total = progressEvent.total ?? 0
                     },
                 })
-                .then((result) => {
+                .then(async (result) => {
                     this.uploadSnackbar.status = false
-                    resolve(result.data.result)
+                    const startPath = result.data?.item?.path ?? filename
+                    try {
+                        const started = await this.$store.dispatch('stitchlabIntake/startPrint', {
+                            filename: startPath,
+                            action: 'switchToDashboard',
+                            loading: 'stitchlabIntakeStartPrint',
+                        })
+                        resolve(started ? startPath : false)
+                    } catch (error: any) {
+                        const message = error?.message ?? this.$t('App.TopBar.CannotUploadTheFile').toString()
+                        this.$toast.error(message)
+                        resolve(false)
+                    }
                 })
                 .catch(() => {
                     this.uploadSnackbar.status = false
                     this.$store.dispatch('socket/removeLoading', { name: 'btnUploadAndStart' })
                     const text = this.$t('App.TopBar.CannotUploadTheFile').toString()
                     this.$toast.error(text)
+                    resolve(false)
                 })
         })
     }

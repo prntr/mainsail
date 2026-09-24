@@ -30,6 +30,10 @@ export const getDefaultState = (): ServerControllerState => {
             deadman: false,
             buttons: 0,
         },
+        live_control_enabled: false,
+        active_controller_type: 'unknown',
+        motion_enabled: false,
+        motion_block_reason: 'live_control_off',
         websocket_connected: false,
     }
 }

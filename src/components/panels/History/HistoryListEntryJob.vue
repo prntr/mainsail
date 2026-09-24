@@ -250,7 +250,11 @@ export default class HistoryListPanel extends Mixins(BaseMixin) {
     startPrint() {
         if (!this.item.exists) return
 
-        this.$socket.emit('printer.print.start', { filename: this.item.filename }, { action: 'switchToDashboard' })
+        this.$store.dispatch('stitchlabIntake/startPrint', {
+            filename: this.item.filename,
+            action: 'switchToDashboard',
+            loading: 'stitchlabIntakeStartPrint',
+        })
     }
 
     createNote() {

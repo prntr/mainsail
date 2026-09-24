@@ -93,6 +93,14 @@
                             <v-list-item-subtitle class="text-caption text--secondary">
                                 {{ peer.mac }}
                             </v-list-item-subtitle>
+                            <v-select
+                                class="controller-type-select mt-1"
+                                dense
+                                hide-details
+                                :items="controllerTypeItems"
+                                :value="peer.controller_type || 'unknown'"
+                                @click.stop
+                                @change="setControllerType(peer, $event)" />
                         </v-list-item-content>
                         <v-list-item-action class="my-0">
                             <v-chip x-small :color="peer.active ? 'success' : 'grey'" text-color="white">
@@ -107,6 +115,33 @@
             </v-card-text>
 
             <v-divider />
+
+            <!-- Live Control Gate -->
+            <v-card-text v-if="dongleConnected" class="py-2">
+                <div class="d-flex align-center">
+                    <span class="text-caption font-weight-medium">
+                        {{ $t('App.ControllerMenu.LiveControl') }}
+                    </span>
+                    <v-spacer />
+                    <v-chip x-small :color="liveControlChipColor" text-color="white">
+                        {{ liveControlChipText }}
+                    </v-chip>
+                </div>
+                <v-switch
+                    class="mt-1"
+                    dense
+                    inset
+                    hide-details
+                    :input-value="liveControlEnabled"
+                    :loading="loadings.includes('controllerLiveControl')"
+                    :disabled="!canToggleLiveControl"
+                    @change="setLiveControl" />
+                <div v-if="liveControlBlockText" class="text-caption text--secondary mt-1">
+                    {{ liveControlBlockText }}
+                </div>
+            </v-card-text>
+
+            <v-divider v-if="dongleConnected" />
 
             <!-- Service Controls -->
             <v-subheader class="pt-2" style="height: auto">
@@ -234,12 +269,15 @@ interface DongleStatus {
     rssi: number
 }
 
+type ControllerType = 'unknown' | 'gamepad' | 'foot_pedal'
+
 interface PeerInfo {
     slot_id: number
     mac: string
     active: boolean
     last_seen: number
     packet_count: number
+    controller_type?: ControllerType
 }
 
 @Component({
@@ -305,6 +343,30 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
         return this.$store.state.server.controller?.peers ?? []
     }
 
+    get liveControlEnabled(): boolean {
+        return this.$store.state.server.controller?.live_control_enabled ?? false
+    }
+
+    get motionEnabled(): boolean {
+        return this.$store.state.server.controller?.motion_enabled ?? false
+    }
+
+    get motionBlockReason(): string {
+        return this.$store.state.server.controller?.motion_block_reason ?? 'live_control_off'
+    }
+
+    get activeControllerType(): ControllerType {
+        return this.$store.state.server.controller?.active_controller_type ?? 'unknown'
+    }
+
+    get controllerTypeItems(): { text: string; value: ControllerType }[] {
+        return [
+            { text: this.$t('App.ControllerMenu.Unknown').toString(), value: 'unknown' },
+            { text: this.$t('App.ControllerMenu.Gamepad').toString(), value: 'gamepad' },
+            { text: this.$t('App.ControllerMenu.FootPedal').toString(), value: 'foot_pedal' },
+        ]
+    }
+
     get linkActive(): boolean {
         return this.dongleStatus.link_active
     }
@@ -320,8 +382,47 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
     get statusColor(): string {
         if (!this.wsConnected) return 'error'
         if (!this.dongleConnected) return 'warning'
-        if (this.hasActiveController) return 'success'
+        if (this.motionEnabled) return 'success'
+        if (this.hasActiveController) return 'warning'
         return 'warning'
+    }
+
+    get canToggleLiveControl(): boolean {
+        return (
+            this.wsConnected &&
+            this.dongleConnected &&
+            this.hasActiveController &&
+            this.activeControllerType !== 'unknown'
+        )
+    }
+
+    get liveControlChipColor(): string {
+        if (!this.liveControlEnabled) return 'grey'
+        return this.motionEnabled ? 'success' : 'warning'
+    }
+
+    get liveControlChipText(): string {
+        if (!this.liveControlEnabled) return this.$t('App.ControllerMenu.LiveControlOff').toString()
+        if (this.motionEnabled) return this.$t('App.ControllerMenu.LiveControlReady').toString()
+        return this.$t('App.ControllerMenu.LiveControlBlocked').toString()
+    }
+
+    get liveControlBlockText(): string {
+        if (!this.dongleConnected || this.motionBlockReason === '') return ''
+
+        const reasonMap: Record<string, string> = {
+            dongle_disconnected: 'MotionBlockedDongleDisconnected',
+            link_inactive: 'MotionBlockedLinkInactive',
+            live_control_off: 'MotionBlockedLiveControlOff',
+            no_active_controller: 'MotionBlockedNoActiveController',
+            not_homed: 'MotionBlockedNotHomed',
+            printer_busy: 'MotionBlockedPrinterBusy',
+            unknown_controller: 'MotionBlockedUnknownController',
+            unsupported_controller_type: 'MotionBlockedUnsupportedController',
+        }
+
+        const key = reasonMap[this.motionBlockReason]
+        return key ? this.$t(`App.ControllerMenu.${key}`).toString() : ''
     }
 
     get statusChipText(): string {
@@ -350,6 +451,17 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
     selectController(peer: PeerInfo): void {
         if (peer.active) return // Already active
         this.$store.dispatch('server/controller/selectController', peer.slot_id)
+    }
+
+    setControllerType(peer: PeerInfo, controllerType: ControllerType): void {
+        this.$store.dispatch('server/controller/setControllerType', {
+            slot_id: peer.slot_id,
+            controller_type: controllerType,
+        })
+    }
+
+    setLiveControl(enabled: boolean): void {
+        this.$store.dispatch('server/controller/setLiveControl', enabled)
     }
 
     toggleWifi(): void {
@@ -399,5 +511,9 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
 <style scoped>
 .v-list-item--active {
     background-color: rgba(var(--v-primary-base), 0.1);
+}
+
+.controller-type-select {
+    max-width: 160px;
 }
 </style>

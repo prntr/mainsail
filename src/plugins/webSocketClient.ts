@@ -13,6 +13,18 @@ const HEARTBEAT_RECV_GAP_MS = 30_000
 const KEEPALIVE_INTERVAL_MS = 10_000
 const HEALTHY_TRAFFIC_RESET_MS = 60_000
 const INIT_WAIT_TIMEOUT_MS = 30_000
+const RECENT_CLOSE_RING_SIZE = 20
+
+export interface RecentClose {
+    at: number
+    code: number
+    reason: string
+    wasClean: boolean
+    recvGapMs: number
+    sendGapMs: number
+    openedForMs: number
+    cause: 'heartbeat' | 'browser'
+}
 
 export class WebSocketClient {
     url = ''
@@ -44,6 +56,12 @@ export class WebSocketClient {
     paused = false
 
     lifecycleAttached = false
+
+    // P1-3: ring buffer of recent closes for the debug overlay.
+    // Includes recv/send gaps at close-time so a Safari background-tab
+    // pong timeout (server-side close with large recvGap) is visually
+    // distinct from an AP-jitter close or a heartbeat-watchdog close.
+    recentCloses: RecentClose[] = []
 
     constructor(options: WebSocketPluginOptions) {
         this.url = options.url
@@ -170,7 +188,24 @@ export class WebSocketClient {
         }
 
         this.instance.onclose = (e) => {
-            log(`closed code=${e.code} reason=${e.reason || '(none)'} wasClean=${e.wasClean}`)
+            const now = Date.now()
+            const recvGapMs = this.lastReceivedAt ? now - this.lastReceivedAt : 0
+            const sendGapMs = this.lastSentAt ? now - this.lastSentAt : 0
+            const openedForMs = this.lastOpenedAt ? now - this.lastOpenedAt : 0
+            log(`closed code=${e.code} reason=${e.reason || '(none)'} wasClean=${e.wasClean} recvGap=${recvGapMs}ms sendGap=${sendGapMs}ms`)
+            this.recentCloses.push({
+                at: now,
+                code: e.code,
+                reason: e.reason,
+                wasClean: e.wasClean,
+                recvGapMs,
+                sendGapMs,
+                openedForMs,
+                cause: this.explicitClose ? 'heartbeat' : 'browser',
+            })
+            if (this.recentCloses.length > RECENT_CLOSE_RING_SIZE) {
+                this.recentCloses.splice(0, this.recentCloses.length - RECENT_CLOSE_RING_SIZE)
+            }
             this.stopKeepalive()
             this.clearReceiveWatchdog()
 

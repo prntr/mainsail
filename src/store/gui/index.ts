@@ -151,9 +151,9 @@ export const getDefaultState = (): GuiState => {
             cncMode: false,
         },
         gcodeStudio: {
-            frameWidth: 100,
-            frameHeight: 100,
-            framePreset: '4x4',
+            frameWidth: 80,
+            frameHeight: 130,
+            framePreset: 'standard',
             showGrid: true,
             gridSpacing: 10,
             lineWidth: 0.1,

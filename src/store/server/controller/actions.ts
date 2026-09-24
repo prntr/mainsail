@@ -4,6 +4,7 @@ import {
     ControllerDongleInfo,
     ControllerDongleStatus,
     ControllerPeerInfo,
+    ControllerType,
 } from '@/store/server/controller/types'
 import { RootState } from '@/store/types'
 import { closeControllerWebSocket, getControllerWebSocket } from '@/plugins/controllerWebSocket'
@@ -49,6 +50,10 @@ export const actions: ActionTree<ServerControllerState, RootState> = {
             dongle_info?: ControllerDongleInfo
             dongle_status?: ControllerDongleStatus
             peers?: ControllerPeerInfo[]
+            live_control_enabled?: boolean
+            active_controller_type?: ControllerType
+            motion_enabled?: boolean
+            motion_block_reason?: string
         }
     ) {
         commit('setDongleConnected', payload.dongle_connected)
@@ -67,6 +72,11 @@ export const actions: ActionTree<ServerControllerState, RootState> = {
         if (payload.dongle_status) {
             commit('setDongleStatus', payload.dongle_status)
         }
+
+        commit('setLiveControlEnabled', payload.live_control_enabled ?? false)
+        commit('setActiveControllerType', payload.active_controller_type ?? 'unknown')
+        commit('setMotionEnabled', payload.motion_enabled ?? false)
+        commit('setMotionBlockReason', payload.motion_block_reason ?? 'live_control_off')
     },
 
     // Handle joystick data from live_jogd WebSocket
@@ -102,6 +112,18 @@ export const actions: ActionTree<ServerControllerState, RootState> = {
     selectController(_, slot_id: number) {
         const ws = getControllerWebSocket(this as any)
         ws.selectController(slot_id)
+    },
+
+    // Command: Enable/disable motion-capable Live Control
+    setLiveControl(_, enabled: boolean) {
+        const ws = getControllerWebSocket(this as any)
+        ws.setLiveControl(enabled)
+    },
+
+    // Command: Runtime controller type label
+    setControllerType(_, payload: { slot_id: number; controller_type: ControllerType }) {
+        const ws = getControllerWebSocket(this as any)
+        ws.setControllerType(payload.slot_id, payload.controller_type)
     },
 
     // Command: Set LED brightness

@@ -105,7 +105,17 @@ export default class GcodefilesPanelTable extends Mixins(BaseMixin, GcodefilesMi
     }
 
     refreshMetadata(data: FileStateGcodefile[]) {
-        const items = data.filter((file) => !file.isDirectory && !file.metadataRequested && !file.metadataPulled)
+        const visibleGcodes = data.filter((file) => !file.isDirectory)
+        if (this.moonrakerComponents.includes('stitchlab_intake')) {
+            this.$store.dispatch(
+                'stitchlabIntake/requestStatuses',
+                visibleGcodes.map((file: FileStateGcodefile) => ({
+                    filename: 'gcodes' + this.currentPath + '/' + file.filename,
+                }))
+            )
+        }
+
+        const items = visibleGcodes.filter((file) => !file.metadataRequested && !file.metadataPulled)
         this.$store.dispatch(
             'files/requestMetadata',
             items.map((file: FileStateGcodefile) => ({

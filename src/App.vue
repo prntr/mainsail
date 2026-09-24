@@ -21,6 +21,7 @@
         </template>
         <the-select-printer-dialog v-else-if="instancesDB !== 'moonraker'" />
         <the-connecting-dialog v-else />
+        <debug-overlay />
     </v-app>
 </template>
 
@@ -44,6 +45,7 @@ import TheBedScrewsDialog from '@/components/dialogs/TheBedScrewsDialog.vue'
 import TheScrewsTiltAdjustDialog from '@/components/dialogs/TheScrewsTiltAdjustDialog.vue'
 import { setAndLoadLocale } from './plugins/i18n'
 import TheMacroPrompt from '@/components/dialogs/TheMacroPrompt.vue'
+import DebugOverlay from '@/components/debug/DebugOverlay.vue'
 import { AppRoute } from '@/routes'
 
 @Component({
@@ -61,6 +63,7 @@ import { AppRoute } from '@/routes'
         TheManualProbeDialog,
         TheBedScrewsDialog,
         TheScrewsTiltAdjustDialog,
+        DebugOverlay,
     },
 })
 export default class App extends Mixins(BaseMixin, ThemeMixin) {
@@ -218,6 +221,7 @@ export default class App extends Mixins(BaseMixin, ThemeMixin) {
         if (newVal === '') return
 
         this.$socket.emit('server.files.metadata', { filename: newVal }, { action: 'files/getMetadataCurrentFile' })
+        this.$store.dispatch('stitchlabIntake/requestMetadataForCurrentFile', newVal)
     }
 
     @Watch('primaryColor', { immediate: true })

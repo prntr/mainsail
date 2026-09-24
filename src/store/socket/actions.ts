@@ -50,6 +50,11 @@ export const actions: ActionTree<SocketState, RootState> = {
                 dispatch('printer/getData', payload.params[0], { root: true })
                 break
 
+            case 'notify_stitchlab_intake_status':
+            case 'notify_stitchlab_intake:status':
+                dispatch('stitchlabIntake/handleStatusEvent', payload.params[0], { root: true })
+                break
+
             case 'notify_gcode_response':
                 dispatch('server/addEvent', Object.assign({ result: payload.params[0] }, { send: false }), {
                     root: true,

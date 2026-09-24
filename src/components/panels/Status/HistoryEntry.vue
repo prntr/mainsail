@@ -227,7 +227,10 @@ export default class StatusPanelHistoryEntry extends Mixins(BaseMixin) {
     startPrint() {
         if (!this.job.exists) return
 
-        this.$socket.emit('printer.print.start', { filename: this.job.filename })
+        this.$store.dispatch('stitchlabIntake/startPrint', {
+            filename: this.job.filename,
+            loading: 'stitchlabIntakeStartPrint',
+        })
     }
 
     addToQueue() {

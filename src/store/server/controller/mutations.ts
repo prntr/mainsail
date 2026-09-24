@@ -7,6 +7,7 @@ import {
     ControllerDongleStatus,
     ControllerPeerInfo,
     ControllerJoystickState,
+    ControllerType,
 } from '@/store/server/controller/types'
 
 export const mutations: MutationTree<ServerControllerState> = {
@@ -32,6 +33,22 @@ export const mutations: MutationTree<ServerControllerState> = {
 
     setJoystick(state, payload: ControllerJoystickState) {
         Vue.set(state, 'joystick', payload)
+    },
+
+    setLiveControlEnabled(state, payload: boolean) {
+        Vue.set(state, 'live_control_enabled', payload)
+    },
+
+    setActiveControllerType(state, payload: ControllerType) {
+        Vue.set(state, 'active_controller_type', payload)
+    },
+
+    setMotionEnabled(state, payload: boolean) {
+        Vue.set(state, 'motion_enabled', payload)
+    },
+
+    setMotionBlockReason(state, payload: string) {
+        Vue.set(state, 'motion_block_reason', payload)
     },
 
     setWebsocketConnected(state, payload: boolean) {

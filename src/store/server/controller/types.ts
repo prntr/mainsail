@@ -36,8 +36,14 @@ export interface ServerControllerState {
     dongle_status: ControllerDongleStatus
     peers: ControllerPeerInfo[]
     joystick: ControllerJoystickState
+    live_control_enabled: boolean
+    active_controller_type: ControllerType
+    motion_enabled: boolean
+    motion_block_reason: string
     websocket_connected: boolean
 }
+
+export type ControllerType = 'unknown' | 'gamepad' | 'foot_pedal'
 
 export interface ControllerDongleInfo {
     mac: string
@@ -63,6 +69,7 @@ export interface ControllerPeerInfo {
     active: boolean
     last_seen: number
     packet_count: number
+    controller_type?: ControllerType
 }
 
 export interface ControllerJoystickState {

@@ -464,7 +464,10 @@ export default class StatusPanel extends Mixins(BaseMixin) {
     }
 
     btnReprintJob() {
-        this.$socket.emit('printer.print.start', { filename: this.current_filename }, { loading: 'statusPrintReprint' })
+        this.$store.dispatch('stitchlabIntake/startPrint', {
+            filename: this.current_filename,
+            loading: 'statusPrintReprint',
+        })
     }
 }
 </script>

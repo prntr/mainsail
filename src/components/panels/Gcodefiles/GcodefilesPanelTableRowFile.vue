@@ -13,7 +13,20 @@
         <td class="px-0 text-center" style="width: 32px">
             <gcodefiles-thumbnail :item="item" />
         </td>
-        <td class=" ">{{ item.filename }}</td>
+        <td class=" ">
+            <span>{{ item.filename }}</span>
+            <v-chip
+                v-if="showIntakeControls"
+                x-small
+                label
+                outlined
+                class="ml-2 file-list__intake-badge"
+                :color="intakeBadgeColor"
+                @click.stop="showDiagnosticsDialog = true">
+                <v-icon x-small left>{{ intakeBadgeIcon }}</v-icon>
+                {{ intakeBadgeLabel }}
+            </v-chip>
+        </td>
         <td class="text-right text-no-wrap">
             <v-tooltip v-if="item.last_status" top>
                 <template #activator="{ on, attrs }">
@@ -90,6 +103,14 @@
                     <v-icon class="mr-1">{{ mdiMagnify }}</v-icon>
                     {{ $t('Files.ScanMeta') }}
                 </v-list-item>
+                <v-list-item v-if="showIntakeControls" :disabled="intakeIsChecking" @click="recheckIntake">
+                    <v-icon class="mr-1">{{ mdiRefresh }}</v-icon>
+                    {{ $t('StitchlabIntake.MenuRecheck') }}
+                </v-list-item>
+                <v-list-item v-if="showIntakeControls" @click="showDiagnosticsDialog = true">
+                    <v-icon class="mr-1">{{ mdiInformationOutline }}</v-icon>
+                    {{ $t('StitchlabIntake.MenuDiagnostics') }}
+                </v-list-item>
                 <v-list-item @click="downloadFile">
                     <v-icon class="mr-1">{{ mdiCloudDownload }}</v-icon>
                     {{ $t('Files.Download') }}
@@ -126,6 +147,58 @@
             :text="$t('Files.DeleteSingleFileQuestion', { name: item.filename })"
             :action-button-text="$t('Buttons.Delete')"
             @action="deleteFile" />
+        <v-dialog v-model="showDiagnosticsDialog" max-width="640">
+            <v-card>
+                <v-card-title class="text-h6">{{ $t('StitchlabIntake.DialogTitle') }}</v-card-title>
+                <v-card-text>
+                    <div class="mb-3">
+                        <strong>{{ $t('StitchlabIntake.DialogStatus') }}</strong>
+                        <span :class="`${intakeBadgeColor}--text`">{{ intakeBadgeLabel }}</span>
+                    </div>
+                    <template v-if="intakeErrors.length">
+                        <div class="font-weight-bold error--text mb-1">
+                            {{ $t('StitchlabIntake.DialogErrors') }}
+                        </div>
+                        <ul class="mb-3">
+                            <li v-for="(entry, index) in intakeErrors" :key="`intake-error-${index}`">
+                                {{ entry }}
+                            </li>
+                        </ul>
+                    </template>
+                    <template v-if="intakeWarnings.length">
+                        <div class="font-weight-bold warning--text mb-1">
+                            {{ $t('StitchlabIntake.DialogWarnings') }}
+                        </div>
+                        <ul class="mb-3">
+                            <li v-for="(entry, index) in intakeWarnings" :key="`intake-warning-${index}`">
+                                {{ entry }}
+                            </li>
+                        </ul>
+                    </template>
+                    <template v-if="intakeInfo.length">
+                        <div class="font-weight-bold info--text mb-1">
+                            {{ $t('StitchlabIntake.DialogInfo') }}
+                        </div>
+                        <ul class="mb-3">
+                            <li v-for="(entry, index) in intakeInfo" :key="`intake-info-${index}`">
+                                {{ entry }}
+                            </li>
+                        </ul>
+                    </template>
+                    <div
+                        v-if="!intakeErrors.length && !intakeWarnings.length && !intakeInfo.length"
+                        class="text--disabled">
+                        {{ $t('StitchlabIntake.DialogNone') }}
+                    </div>
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer />
+                    <v-btn text @click="showDiagnosticsDialog = false">
+                        {{ $t('StitchlabIntake.DialogClose') }}
+                    </v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
     </tr>
 </template>
 <script lang="ts">
@@ -142,9 +215,16 @@ import {
     mdiFileDocumentEditOutline,
     mdiFire,
     mdiMagnify,
+    mdiAlertCircleOutline,
+    mdiCheckCircleOutline,
+    mdiClockOutline,
+    mdiHelpCircleOutline,
+    mdiInformationOutline,
     mdiPlay,
     mdiPlaylistPlus,
     mdiRenameBox,
+    mdiRefresh,
+    mdiShieldAlertOutline,
     mdiVideo3d,
     mdiPencilRuler,
 } from '@mdi/js'
@@ -158,6 +238,7 @@ import GcodefilesPanelTableRowFileMetadataFilaments from '@/components/panels/Gc
 import GcodefilesPanelTableRowFileMetadataSlicer from '@/components/panels/Gcodefiles/GcodefilesPanelTableRowFileMetadataSlicer.vue'
 import GcodefilesPanelTableRowFileMetadataFilamentStrings from '@/components/panels/Gcodefiles/GcodefilesPanelTableRowFileMetadataFilamentStrings.vue'
 import { CLOSE_CONTEXT_MENU, EventBus } from '@/plugins/eventBus'
+import { diagnosticMessage } from '@/store/stitchlabIntake/helpers'
 
 @Component({
     components: {
@@ -178,9 +259,16 @@ export default class GcodefilesPanelTableRowFile extends Mixins(BaseMixin, Contr
     mdiFileDocumentEditOutline = mdiFileDocumentEditOutline
     mdiFire = mdiFire
     mdiMagnify = mdiMagnify
+    mdiAlertCircleOutline = mdiAlertCircleOutline
+    mdiCheckCircleOutline = mdiCheckCircleOutline
+    mdiClockOutline = mdiClockOutline
+    mdiHelpCircleOutline = mdiHelpCircleOutline
+    mdiInformationOutline = mdiInformationOutline
     mdiPlay = mdiPlay
     mdiPlaylistPlus = mdiPlaylistPlus
     mdiRenameBox = mdiRenameBox
+    mdiRefresh = mdiRefresh
+    mdiShieldAlertOutline = mdiShieldAlertOutline
     mdiVideo3d = mdiVideo3d
     mdiPencilRuler = mdiPencilRuler
 
@@ -193,6 +281,7 @@ export default class GcodefilesPanelTableRowFile extends Mixins(BaseMixin, Contr
     showRenameFileDialog = false
     showDuplicateFileDialog = false
     showDeleteFileDialog = false
+    showDiagnosticsDialog = false
 
     @Prop({ type: Object, required: true }) readonly item!: FileStateGcodefile
     @Prop({ type: Boolean, required: true }) readonly isSelected!: boolean
@@ -224,6 +313,101 @@ export default class GcodefilesPanelTableRowFile extends Mixins(BaseMixin, Contr
 
     get printStatusIconColor() {
         return convertPrintStatusIconColor(this.item.last_status ?? '')
+    }
+
+    get fullIntakeFilename(): string {
+        const filename = [this.currentPath, this.item.filename].join('/')
+        return filename.replace(/^\/+/, '')
+    }
+
+    get showIntakeControls(): boolean {
+        return this.isGcodeFile && this.moonrakerComponents.includes('stitchlab_intake')
+    }
+
+    get intakeEntry(): any {
+        return this.$store.getters['stitchlabIntake/getEntry'](this.fullIntakeFilename) ?? null
+    }
+
+    get intakeState(): string {
+        return this.intakeEntry?.state ?? 'unchecked'
+    }
+
+    get intakeIsChecking(): boolean {
+        return ['queued', 'running', 'checking'].includes(this.intakeState)
+    }
+
+    get intakeBadgeKey(): 'Checking' | 'Valid' | 'Warnings' | 'Blocked' | 'Unchecked' {
+        switch (this.intakeState) {
+            case 'queued':
+            case 'running':
+            case 'checking':
+                return 'Checking'
+            case 'valid':
+                return 'Valid'
+            case 'warnings':
+                return 'Warnings'
+            case 'blocked':
+            case 'error':
+                return 'Blocked'
+            default:
+                return 'Unchecked'
+        }
+    }
+
+    get intakeBadgeLabel(): string {
+        return this.$t(`StitchlabIntake.Badge${this.intakeBadgeKey}`).toString()
+    }
+
+    get intakeBadgeColor(): string {
+        switch (this.intakeBadgeKey) {
+            case 'Checking':
+                return 'info'
+            case 'Valid':
+                return 'success'
+            case 'Warnings':
+                return 'warning'
+            case 'Blocked':
+                return 'error'
+            default:
+                return 'grey'
+        }
+    }
+
+    get intakeBadgeIcon(): string {
+        switch (this.intakeBadgeKey) {
+            case 'Checking':
+                return this.mdiClockOutline
+            case 'Valid':
+                return this.mdiCheckCircleOutline
+            case 'Warnings':
+                return this.mdiAlertCircleOutline
+            case 'Blocked':
+                return this.mdiShieldAlertOutline
+            default:
+                return this.mdiHelpCircleOutline
+        }
+    }
+
+    get intakeErrors(): string[] {
+        const output = (this.intakeEntry?.errors ?? []).map(diagnosticMessage)
+        if (this.intakeEntry?.macros?.state === 'missing') {
+            for (const macro of this.intakeEntry.macros.missing ?? []) {
+                output.push(this.$t('StitchlabIntake.ToastMissingMacro', { macro }).toString())
+            }
+        }
+        return output
+    }
+
+    get intakeWarnings(): string[] {
+        const output = (this.intakeEntry?.warnings ?? []).map(diagnosticMessage)
+        if (this.intakeEntry?.macros?.state === 'offline') {
+            output.push(this.$t('StitchlabIntake.ToastMacrosOffline').toString())
+        }
+        return output
+    }
+
+    get intakeInfo(): string[] {
+        return (this.intakeEntry?.info ?? []).map(diagnosticMessage)
     }
 
     showContextMenuAction(e: MouseEvent) {
@@ -271,6 +455,10 @@ export default class GcodefilesPanelTableRowFile extends Mixins(BaseMixin, Contr
         this.$store.dispatch('files/scanMetadata', {
             filename: 'gcodes' + this.currentPath + '/' + this.item.filename,
         })
+    }
+
+    recheckIntake() {
+        this.$store.dispatch('stitchlabIntake/recheck', this.fullIntakeFilename)
     }
 
     downloadFile() {
