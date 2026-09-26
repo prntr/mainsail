@@ -51,7 +51,6 @@ export const actions: ActionTree<SocketState, RootState> = {
                 break
 
             case 'notify_stitchlab_intake_status':
-            case 'notify_stitchlab_intake:status':
                 dispatch('stitchlabIntake/handleStatusEvent', payload.params[0], { root: true })
                 break
 
