@@ -96,7 +96,8 @@ export class WebSocketClient {
 
     handleResume(source: string): void {
         this.paused = false
-        if (this.instance?.readyState === WebSocket.OPEN) {
+        const state = this.instance?.readyState
+        if (state === WebSocket.OPEN) {
             log(`${source}: socket OPEN, probing server.info and resetting watchdog`)
             this.lastReceivedAt = Date.now()
             this.resetReceiveWatchdog()
@@ -107,11 +108,14 @@ export class WebSocketClient {
             this.emit('server.info', {})
             return
         }
-        log(`${source}: socket not OPEN — forcing immediate reconnect`)
-        if (this.reconnectTimer !== null) {
-            clearTimeout(this.reconnectTimer)
-            this.reconnectTimer = null
+        // Leave a connect in progress alone: pageshow fires during the very
+        // first connect. Without an instance nothing was connected yet (no
+        // printer chosen), so there is nothing to resume either.
+        if (state === undefined || state === WebSocket.CONNECTING) {
+            log(`${source}: socket ${state === undefined ? 'not created' : 'still connecting'} — nothing to resume`)
+            return
         }
+        log(`${source}: socket not OPEN — reconnecting now`)
         this.reconnects = 0
         this.connect()
     }
@@ -172,7 +176,13 @@ export class WebSocketClient {
         })
 
         log(`connecting to ${this.url}`)
-        this.instance?.close()
+        // A reconnect still pending from an earlier close would fire later
+        // and replace the socket opened here.
+        if (this.reconnectTimer !== null) {
+            clearTimeout(this.reconnectTimer)
+            this.reconnectTimer = null
+        }
+        this.discardInstance()
         this.instance = new WebSocket(this.url)
 
         this.instance.onopen = () => {
@@ -264,6 +274,22 @@ export class WebSocketClient {
 
     close(): void {
         this.instance?.close()
+    }
+
+    // Detach the current socket before replacing it. Its handlers act on
+    // `this`, so once it is superseded its close or error event would stop
+    // the new socket's keepalive, schedule another reconnect that later
+    // closes the healthy socket, or dispatch socket/onClose for a
+    // connection that is up.
+    private discardInstance(): void {
+        const old = this.instance
+        if (!old) return
+        this.instance = null
+        old.onopen = null
+        old.onclose = null
+        old.onerror = null
+        old.onmessage = null
+        if (old.readyState === WebSocket.CONNECTING || old.readyState === WebSocket.OPEN) old.close()
     }
 
     getWaitById(id: number): Wait | null {
