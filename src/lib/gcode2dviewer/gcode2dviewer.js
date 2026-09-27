@@ -1,5 +1,5 @@
 /*jslint todo: true, browser: true, continue: true, white: true*/
-/*global THREE, GCodeToGeometry*/
+/*global GCodeToGeometry*/
 
 /**
  * Written by Alex Canales for ShopBotTools, Inc.

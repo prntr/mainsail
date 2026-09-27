@@ -1156,7 +1156,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     get activeFrameGeometry(): FrameGeometry | null {
-        if (this.activeFramePreset?.geometryId === stitchlabStandardFrameGeometry.id) return stitchlabStandardFrameGeometry
+        if (this.activeFramePreset?.geometryId === stitchlabStandardFrameGeometry.id)
+            return stitchlabStandardFrameGeometry
         return null
     }
 
