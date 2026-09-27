@@ -46,6 +46,17 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # release_info.json must name this fork and this tag, or Moonraker's
+          # update_manager falls back to upstream mainsail-crew releases.
+          MAINSAIL_RELEASE_OWNER: prntr
+          MAINSAIL_RELEASE_VERSION: ${{ steps.version.outputs.tag }}
+
+      - name: Check release_info.json
+        run: |
+          grep -q '"project_owner":"prntr"' dist/release_info.json
+          grep -q '"version":"${{ steps.version.outputs.tag }}"' dist/release_info.json
+          unzip -p dist/mainsail.zip release_info.json | grep -q '"project_owner":"prntr"'
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
