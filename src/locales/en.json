@@ -346,6 +346,7 @@
         "Colors": "Colors",
         "DesignHeight": "Design Height",
         "DesignInfo": "Design Info",
+        "DesignOutsideFrame": "DESIGN_OUTSIDE_HOOP: the design (X {minX}–{maxX} mm, Y {minY}–{maxY} mm) lies outside the frame (X 0–{width} mm, Y 0–{height} mm). Move it inside before starting.",
         "DesignWidth": "Design Width",
         "DiscardEdits": "Discard",
         "Display": "Display Options",

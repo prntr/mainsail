@@ -628,6 +628,9 @@ import stitchlabStandardFrameGeometryAsset from '@/assets/stitchlab/standard-fra
 // Dragging a window edge fires many resize events; redrawing the grid and
 // frame for each one is wasted work.
 const RESIZE_THROTTLE_MS = 50
+// Same tolerance as the intake's hoop check, for bounds that sit exactly on
+// the frame edge after float formatting.
+const BOUNDS_EPSILON_MM = 1e-6
 
 interface FramePreset {
     id: string
@@ -1853,6 +1856,11 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         this.isStartingRepositioned = true
         try {
             const transformed = this.transformGcode()
+            const outside = this.designOutsideFrameMessage(transformed)
+            if (outside) {
+                this.$toast.error(outside)
+                return
+            }
             const filename = this.getRepositionedFilename()
             const path = this.getRepositionedPath()
             const file = new File([transformed], filename, { type: 'text/plain' })
@@ -1875,6 +1883,58 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         } finally {
             this.isStartingRepositioned = false
         }
+    }
+
+    // Save & Start uploads the moved design before the intake on the Pi checks
+    // it, so every try at a design outside the frame left another
+    // _repositioned file behind. Catch that case before the upload; the intake
+    // stays the gate for everything this does not cover.
+    designOutsideFrameMessage(gcode: string): string | null {
+        const bounds = this.gcodeXYBounds(gcode)
+        if (!bounds || this.frameWidth <= 0 || this.frameHeight <= 0) return null
+        const inside =
+            bounds.minX >= -BOUNDS_EPSILON_MM &&
+            bounds.minY >= -BOUNDS_EPSILON_MM &&
+            bounds.maxX <= this.frameWidth + BOUNDS_EPSILON_MM &&
+            bounds.maxY <= this.frameHeight + BOUNDS_EPSILON_MM
+        if (inside) return null
+        return this.$t('GCodeStudio.DesignOutsideFrame', {
+            minX: bounds.minX.toFixed(1),
+            maxX: bounds.maxX.toFixed(1),
+            minY: bounds.minY.toFixed(1),
+            maxY: bounds.maxY.toFixed(1),
+            width: this.frameWidth,
+            height: this.frameHeight,
+        }).toString()
+    }
+
+    // X/Y extent of the G0-G3 moves. Returns null when positions cannot be
+    // known from the text alone (relative moves, position resets), which
+    // leaves the decision to the intake.
+    gcodeXYBounds(gcode: string): { minX: number; maxX: number; minY: number; maxY: number } | null {
+        let x = 0
+        let y = 0
+        let bounds: { minX: number; maxX: number; minY: number; maxY: number } | null = null
+        for (const line of this.normalizeLineEndings(gcode).split('\n')) {
+            const commentIndex = this.getCommentInsertIndex(line)
+            const code = (commentIndex === -1 ? line : line.slice(0, commentIndex)).trim()
+            if (/\bG9[12]\b/i.test(code)) return null
+            if (!/^G0*[0-3]\b/i.test(code)) continue
+            const xMatch = code.match(/\bX([-+]?\d*\.?\d+)/i)
+            const yMatch = code.match(/\bY([-+]?\d*\.?\d+)/i)
+            if (!xMatch && !yMatch) continue
+            if (xMatch) x = this.parseGcodeNumber(xMatch[1])
+            if (yMatch) y = this.parseGcodeNumber(yMatch[1])
+            bounds = bounds
+                ? {
+                      minX: Math.min(bounds.minX, x),
+                      maxX: Math.max(bounds.maxX, x),
+                      minY: Math.min(bounds.minY, y),
+                      maxY: Math.max(bounds.maxY, y),
+                  }
+                : { minX: x, maxX: x, minY: y, maxY: y }
+        }
+        return bounds
     }
 
     toggleEditMode(): void {
