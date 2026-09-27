@@ -28,7 +28,7 @@
                 <v-btn
                     icon
                     tile
-                    :disabled="!loadedFile || !showGCode"
+                    :disabled="!loadedFile || (!editMode && !showGCode)"
                     :color="editMode ? 'primary' : ''"
                     :title="$t('GCodeStudio.EditMode')"
                     @click="toggleEditMode">
@@ -823,6 +823,10 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     selectedGcodeFile: string | null = null
     isUploadingRepositioned = false
     isStartingRepositioned = false
+    // Session state, not a saved setting: the edited G-code is not kept, so an
+    // edit mode restored after a reload locked every placement control with
+    // nothing to edit.
+    editMode = false
     editedGcode = ''
     originalGcodeHash = ''
     isUploadingEdited = false
@@ -1171,14 +1175,6 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     set moveMode(newVal: boolean) {
         if (this.editMode) return
         this.$store.dispatch('gui/saveSetting', { name: 'gcodeStudio.moveMode', value: newVal })
-    }
-
-    get editMode(): boolean {
-        return this.$store.state.gui.gcodeStudio?.editMode ?? false
-    }
-
-    set editMode(newVal: boolean) {
-        this.$store.dispatch('gui/saveSetting', { name: 'gcodeStudio.editMode', value: newVal })
     }
 
     get isEditorDirty(): boolean {
