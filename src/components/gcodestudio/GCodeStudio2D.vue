@@ -509,7 +509,6 @@
                     type="file"
                     @change="fileSelected" />
             </v-card-text>
-            <resize-observer @notify="handleResize" />
         </panel>
         <v-dialog v-model="showGcodeFileDialog" max-width="520">
             <v-card>
@@ -622,8 +621,13 @@ import {
     mdiContentSave,
 } from '@mdi/js'
 import { sha256 } from 'js-sha256'
+import throttle from 'lodash.throttle'
 import { defaultMode, getStitchlabGcodeStudioPalette } from '@/store/variables'
 import stitchlabStandardFrameGeometryAsset from '@/assets/stitchlab/standard-frame.json'
+
+// Dragging a window edge fires many resize events; redrawing the grid and
+// frame for each one is wasted work.
+const RESIZE_THROTTLE_MS = 50
 
 interface FramePreset {
     id: string
@@ -817,6 +821,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     boundKeyDown?: (event: KeyboardEvent) => void
     autoFitRequestId: number | null = null
     resizeAutoFitTimeout: number | null = null
+    resizeObserver: ResizeObserver | null = null
     pendingGcode: string | null = null
     parserReady = false
     showGcodeFileDialog = false
@@ -1230,6 +1235,10 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         }
         this.$store.dispatch('files/initRootDirs', ['gcodes'])
         this.bindKeyboardEvents()
+        // The canvas follows its wrapper: window size, and the column width that
+        // changes with "Show G-Code". handleResize is a no-op until Paper.js is up.
+        this.resizeObserver = new ResizeObserver(throttle(() => this.handleResize(), RESIZE_THROTTLE_MS))
+        this.resizeObserver.observe(this.canvasWrapper)
         this.loadLibraryScripts().then(() => {
             this.$nextTick(() => {
                 this.initPaper()
@@ -1244,6 +1253,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     }
 
     beforeDestroy(): void {
+        this.resizeObserver?.disconnect()
         if (this.scrubInterval) clearInterval(this.scrubInterval)
         if (this.autoFitRequestId !== null) cancelAnimationFrame(this.autoFitRequestId)
         if (this.resizeAutoFitTimeout !== null) clearTimeout(this.resizeAutoFitTimeout)
