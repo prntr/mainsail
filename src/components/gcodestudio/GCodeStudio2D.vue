@@ -530,7 +530,7 @@
                 <v-card-actions>
                     <v-spacer />
                     <v-btn text @click="showGcodeFileDialog = false">
-                        {{ $t('Files.Cancel') }}
+                        {{ $t('Buttons.Cancel') }}
                     </v-btn>
                     <v-btn color="primary" text :disabled="!selectedGcodeFile" @click="loadSelectedGcodeFile">
                         {{ $t('GCodeStudio.LoadFile') }}
@@ -3089,6 +3089,18 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     border: 1px solid var(--ctp-surface0, rgba(128, 128, 128, 0.25));
     border-radius: 4px;
     overflow: hidden;
+}
+
+/* The scrubber row appears once a file is loaded. Without giving its height
+   back, the Clear button below it fell off a 768-pixel laptop screen. */
+.withScrubber .canvas-wrapper,
+.withScrubber .viewer,
+.withScrubber .right-panel {
+    height: calc(100vh - 300px);
+}
+
+.withScrubber .right-panel {
+    max-height: calc(100vh - 300px);
 }
 
 .viewer--edit {
