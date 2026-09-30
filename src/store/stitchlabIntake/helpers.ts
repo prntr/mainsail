@@ -24,6 +24,18 @@ export function buildPlacementFromGui(gcodeStudio: any = {}): StitchlabIntakePla
     }
 }
 
+// Nothing homes the machine for a job: designs carry no G28, and homing is the
+// operator's EMBROIDERY_HOME, which homes X, Y and Z. Every design moves all
+// three (a stitch is a Z move), so a job needs all three homed.
+const START_REQUIRED_AXES = ['x', 'y', 'z']
+
+// Axes a job start still needs homed, in upper case for messages. Empty when
+// the machine is ready to start.
+export function unhomedStartAxes(homedAxes?: string | null): string[] {
+    const homed = (homedAxes ?? '').toLowerCase()
+    return START_REQUIRED_AXES.filter((axis) => !homed.includes(axis)).map((axis) => axis.toUpperCase())
+}
+
 export function normalizeIntakeEntry(payload: any = {}): StitchlabIntakeEntry {
     const filename = normalizeIntakeFilename(payload.filename ?? payload.requestParams?.filename ?? '')
     const stats = payload.stats ?? {}

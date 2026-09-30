@@ -1804,6 +1804,7 @@
         "DialogWarnings": "Warnings",
         "MenuDiagnostics": "Intake diagnostics",
         "MenuRecheck": "Recheck intake",
+        "ToastHomeFirst": "Home the machine before starting (EMBROIDERY_HOME). Not homed: {axes}.",
         "ToastJobBlocked": "Job is blocked by StitchLab intake.",
         "ToastMacrosOffline": "Klipper macros could not be checked.",
         "ToastMissingMacro": "Missing Klipper macro: {macro}",

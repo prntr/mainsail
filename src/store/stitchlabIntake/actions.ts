@@ -3,7 +3,13 @@ import { ActionTree } from 'vuex'
 import { BatchMessage } from '@/plugins/webSocketClient'
 import i18n from '@/plugins/i18n'
 import { RootState } from '@/store/types'
-import { diagnosticMessage, buildPlacementFromGui, normalizeIntakeEntry, normalizeIntakeFilename } from './helpers'
+import {
+    diagnosticMessage,
+    buildPlacementFromGui,
+    normalizeIntakeEntry,
+    normalizeIntakeFilename,
+    unhomedStartAxes,
+} from './helpers'
 import { StitchlabIntakePlacement, StitchlabIntakeState } from './types'
 
 function t(key: string, params?: Record<string, any>): string {
@@ -119,6 +125,14 @@ export const actions: ActionTree<StitchlabIntakeState, RootState> = {
     ): Promise<boolean> {
         const filename = normalizeIntakeFilename(payload.filename)
         if (!filename) return false
+
+        // Klipper would refuse the first move, but only after the job started;
+        // on an unhomed machine that refusal was all that kept the needle still.
+        const unhomed = unhomedStartAxes(rootState.printer?.toolhead?.homed_axes)
+        if (unhomed.length) {
+            Vue.$toast.error(t('ToastHomeFirst', { axes: unhomed.join(', ') }))
+            return false
+        }
 
         if (!hasIntake(rootState)) {
             startDirect(filename, payload.action, payload.loading)

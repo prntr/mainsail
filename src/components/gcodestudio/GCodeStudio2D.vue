@@ -595,6 +595,7 @@ import { Debounce } from 'vue-debounce-decorator'
 import paper from 'paper'
 import gcodeToGeometryUrl from '@/lib/gcode2dviewer/gcodetogeometry.min.js?url'
 import { FileStateGcodefile } from '@/store/files/types'
+import { unhomedStartAxes } from '@/store/stitchlabIntake/helpers'
 import { needleIcon } from '@/components/icons/needleIcon'
 import {
     mdiCameraRetake,
@@ -1854,6 +1855,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     async uploadAndStartTransformedGcode(): Promise<void> {
         if (!this.canExportRepositioned || this.repositionedActionBusy) return
         if (!this.klipperReadyForGui || this.printerIsPrinting) return
+        if (this.refuseUnhomedStart()) return
         this.isStartingRepositioned = true
         try {
             const transformed = this.transformGcode()
@@ -1884,6 +1886,15 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         } finally {
             this.isStartingRepositioned = false
         }
+    }
+
+    // The intake store refuses a start on an unhomed machine too, but only after
+    // Save & Start has uploaded; checking first leaves no file behind.
+    refuseUnhomedStart(): boolean {
+        const unhomed = unhomedStartAxes(this.$store.state.printer?.toolhead?.homed_axes)
+        if (!unhomed.length) return false
+        this.$toast.error(this.$t('StitchlabIntake.ToastHomeFirst', { axes: unhomed.join(', ') }).toString())
+        return true
     }
 
     // Save & Start uploads the moved design before the intake on the Pi checks
@@ -2086,6 +2097,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     async uploadAndStartEditedGcode(): Promise<void> {
         if (!this.isEditorDirty || this.editedActionBusy) return
         if (!this.klipperReadyForGui || this.printerIsPrinting) return
+        if (this.refuseUnhomedStart()) return
         this.isStartingEdited = true
         try {
             const filename = this.getEditedFilename()
