@@ -61,7 +61,7 @@
 
             <!-- Not connected message -->
             <v-card-text v-else-if="!wsConnected" class="text-center text--secondary py-4">
-                {{ $t('App.ControllerMenu.ServiceNotRunning') }}
+                {{ notRunningText }}
             </v-card-text>
 
             <v-divider v-if="dongleConnected" />
@@ -236,8 +236,9 @@
 </template>
 
 <script lang="ts">
-import { Component, Mixins } from 'vue-property-decorator'
+import { Component, Mixins, Watch } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
+import { UsbDevice } from '@/components/dialogs/DevicesDialogUsb.vue'
 import {
     mdiGamepadVariant,
     mdiGamepadVariantOutline,
@@ -271,6 +272,11 @@ interface DongleStatus {
 
 type ControllerType = 'unknown' | 'gamepad' | 'foot_pedal'
 
+// Espressif USB serial/JTAG: the ESP32-C3 and ESP32-C6 dongles, matched by
+// 99-stitchlab-dongle.rules on the Pi as well.
+const DONGLE_VENDOR_ID = '303a'
+const DONGLE_PRODUCT_ID = '1001'
+
 interface PeerInfo {
     slot_id: number
     mac: string
@@ -296,6 +302,10 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
     mdiStop = mdiStop
 
     showMenu = false
+    // Whether Moonraker lists the dongle among the Pi's USB devices; null
+    // until checked or when the check failed. Without the service running,
+    // this is the only way to tell "no dongle" from "service offline".
+    donglePlugged: boolean | null = null
 
     // No auto-connect on mount. The live_jogd service is installed but not
     // started by default — connecting to :7150 here would either spam
@@ -426,9 +436,15 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
     }
 
     get statusChipText(): string {
+        if (!this.wsConnected && this.donglePlugged === false) return this.$t('App.ControllerMenu.NoDongle').toString()
         if (!this.wsConnected) return this.$t('App.ControllerMenu.ServiceOffline').toString()
         if (!this.dongleConnected) return this.$t('App.ControllerMenu.Disconnected').toString()
         return this.$t('App.ControllerMenu.Connected').toString()
+    }
+
+    get notRunningText(): string {
+        if (this.donglePlugged === false) return this.$t('App.ControllerMenu.NoDongleHint').toString()
+        return this.$t('App.ControllerMenu.ServiceNotRunning').toString()
     }
 
     get rssiColor(): string {
@@ -436,6 +452,11 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
         if (rssi >= -50) return 'success'
         if (rssi >= -70) return 'warning'
         return 'error'
+    }
+
+    @Watch('showMenu')
+    onShowMenuChanged(open: boolean): void {
+        if (open && !this.wsConnected) this.checkDonglePlugged()
     }
 
     formatUptime(seconds: number): string {
@@ -472,7 +493,32 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
         this.$store.dispatch('server/controller/togglePairing')
     }
 
-    startService(): void {
+    async checkDonglePlugged(): Promise<boolean | null> {
+        try {
+            const devices: UsbDevice[] = await fetch(this.apiUrl + '/machine/peripherals/usb')
+                .then((res) => res.json())
+                .then((res) => res.result?.usb_devices ?? [])
+            this.donglePlugged = devices.some(
+                (device) =>
+                    device.vendor_id?.toLowerCase() === DONGLE_VENDOR_ID &&
+                    device.product_id?.toLowerCase() === DONGLE_PRODUCT_ID
+            )
+        } catch {
+            this.donglePlugged = null
+        }
+        return this.donglePlugged
+    }
+
+    // Without the dongle systemd skips the start (ConditionPathExists), and
+    // the WebSocket would retry :7150 for nothing. Say so instead.
+    async refuseWithoutDongle(): Promise<boolean> {
+        if ((await this.checkDonglePlugged()) !== false) return false
+        this.$toast.error(this.$t('App.ControllerMenu.NoDongleHint').toString())
+        return true
+    }
+
+    async startService(): Promise<void> {
+        if (await this.refuseWithoutDongle()) return
         this.$store.dispatch('socket/addLoading', { name: 'controllerStart' })
         this.$socket.emit('machine.services.start', { service: 'live_jogd' }, { action: 'server/serviceStarted' })
         // Open the live_jogd WebSocket. The first attempts may fail while
@@ -495,7 +541,8 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
         }, 3000)
     }
 
-    restartService(): void {
+    async restartService(): Promise<void> {
+        if (await this.refuseWithoutDongle()) return
         this.$store.dispatch('socket/addLoading', { name: 'controllerRestart' })
         this.$socket.emit('machine.services.restart', { service: 'live_jogd' }, { action: 'server/serviceRestarted' })
         // Tear down the existing socket and reconnect after the restart.

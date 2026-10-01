@@ -27,6 +27,8 @@
             "MotionBlockedUnknownController": "Motion disabled: choose a controller type",
             "MotionBlockedUnsupportedController": "Motion disabled for this controller type",
             "NoControllers": "No controllers paired",
+            "NoDongle": "No Dongle",
+            "NoDongleHint": "No StitchLab dongle is plugged into the Pi. Plug it into a USB port, then start the controller service.",
             "Pair": "Pair",
             "PairingOn": "Pairing...",
             "RestartService": "Restart Service",
