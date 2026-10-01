@@ -207,8 +207,15 @@ export const actions: ActionTree<ServerWifiState, RootState> = {
         Vue.$socket.emit('server.wifi.ap.configure', payload, { action: 'server/wifiManager/onApConfigure' })
     },
 
-    addNetwork({ state }, payload: { ssid: string; password?: string; autoconnect?: boolean; priority?: number }) {
+    // The Wi-Fi form connects right after this. Resolving before the server has
+    // saved the profile let connect create a second profile of the same name
+    // (commissioning run of 2026-09-28), so wait for the reply; a failure
+    // rejects and reaches the form.
+    async addNetwork(
+        { state },
+        payload: { ssid: string; password?: string; autoconnect?: boolean; priority?: number }
+    ) {
         if (!state.available) return
-        Vue.$socket.emit('server.wifi.add', payload, { action: 'server/wifiManager/onProfiles' })
+        await Vue.$socket.emitAndWait('server.wifi.add', payload)
     },
 }

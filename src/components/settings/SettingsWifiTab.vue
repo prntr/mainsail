@@ -47,7 +47,10 @@
 
                     <v-list v-if="wifiProfiles.length" dense class="py-0">
                         <draggable v-model="sortedProfiles" handle=".drag-handle" @end="onProfileReorder">
-                            <v-list-item v-for="profile in sortedProfiles" :key="profile.name" class="px-0">
+                            <v-list-item
+                                v-for="profile in sortedProfiles"
+                                :key="profile.uuid ?? profile.name"
+                                class="px-0">
                                 <v-list-item-icon class="drag-handle mr-2" style="cursor: grab">
                                     <v-icon small>{{ mdiDrag }}</v-icon>
                                 </v-list-item-icon>
@@ -604,7 +607,7 @@ export default class SettingsWifiTab extends Mixins(BaseMixin) {
             this.cancelForm()
             this.$toast.success(this.$t('Settings.WifiTab.ConnectingTo', { ssid: this.networkForm.ssid }).toString())
         } catch (e: any) {
-            this.$toast.error(e.message || this.$t('Settings.WifiTab.ConnectionFailed').toString())
+            this.$toast.error(e?.message || this.$t('Settings.WifiTab.ConnectionFailed').toString())
         }
     }
 

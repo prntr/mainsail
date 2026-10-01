@@ -26,6 +26,8 @@ export interface WifiNetwork {
 
 export interface WifiProfile {
     name: string
+    // Names can repeat; the UUID cannot. Sent by stitchlabos-config since beta5.
+    uuid?: string
     type: 'wifi' | 'ap'
     ssid: string
     autoconnect: boolean
