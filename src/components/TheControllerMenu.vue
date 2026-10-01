@@ -307,13 +307,15 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
     // this is the only way to tell "no dongle" from "service offline".
     donglePlugged: boolean | null = null
 
-    // No auto-connect on mount. The live_jogd service is installed but not
-    // started by default — connecting to :7150 here would either spam
-    // reconnects on every page load or contribute to the ~30 req/s
-    // background load reported in the Cross-Platform Stability plan
-    // (P0-2). The user explicitly initialises the controller via the
-    // Play button below, which starts the systemd service and only then
-    // opens the WebSocket.
+    // No auto-connect on mount. The live_jogd service runs only while a
+    // dongle is plugged in (udev starts it) or after the Play button below;
+    // connecting to :7150 on every page load would spam reconnects (P0-2 of
+    // the Cross-Platform Stability plan). Opening the menu connects to a
+    // service that is already running.
+
+    get serviceActive(): boolean {
+        return this.$store.state.server.system_info?.service_state?.live_jogd?.active_state === 'active'
+    }
 
     get wsConnected(): boolean {
         return this.$store.state.server.controller?.websocket_connected ?? false
@@ -456,7 +458,12 @@ export default class TheControllerMenu extends Mixins(BaseMixin) {
 
     @Watch('showMenu')
     onShowMenuChanged(open: boolean): void {
-        if (open && !this.wsConnected) this.checkDonglePlugged()
+        if (!open || this.wsConnected) return
+        if (this.serviceActive) {
+            this.$store.dispatch('server/controller/initWebSocket')
+            return
+        }
+        this.checkDonglePlugged()
     }
 
     formatUptime(seconds: number): string {
