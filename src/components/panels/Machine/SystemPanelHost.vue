@@ -27,7 +27,7 @@
                         {{
                             $t('Machine.SystemPanel.Values.Distro', {
                                 name: releaseName,
-                                version_id: hostStats.release_info.version_id,
+                                version_id: releaseVersion,
                             })
                         }}
                         <template v-if="hostStats.release_info.codename">
@@ -221,7 +221,23 @@ export default class SystemPanelHost extends Mixins(BaseMixin) {
         return this.$store.state.server?.system_info ?? {}
     }
 
+    // The distro library reads /etc/stitchlabos_version as a release file and
+    // splits the bare version at its first digits: "20260927-814dd93" arrives
+    // as name "2" and version_id "0260927-814dd93", "0.1.0-beta.5" as "0." and
+    // "1.0-beta.5". Joined, they are the version again.
+    get isStitchlabOs(): boolean {
+        return this.hostStats.release_info?.id === 'stitchlabos'
+    }
+
+    get releaseVersion(): string {
+        const info = this.hostStats.release_info
+        if (this.isStitchlabOs) return `${info?.name ?? ''}${info?.version_id ?? ''}`
+        return info?.version_id ?? ''
+    }
+
     get releaseName() {
+        if (this.isStitchlabOs) return 'StitchLabOS'
+
         let name = this.hostStats.release_info?.name ?? ''
 
         if (name.startsWith('#')) return this.hostStats.release_info?.id ?? null
