@@ -65,3 +65,7 @@ export function toolheadActionAllowed(action: ToolheadAction, phase: JobPhase): 
     if (phase === 'paused') return action === 'jogZ'
     return true
 }
+
+// Macros that exist for job files (end of job, colour change, the job start
+// wrapper), not as buttons. Upper case, as Mainsail stores hidden macros.
+export const JOB_FILE_MACROS = ['M0', 'M00', 'M2', 'M30', 'M600', 'COLOR_CHANGE', 'SDCARD_PRINT_FILE']

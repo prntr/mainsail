@@ -55,6 +55,9 @@ const allDisabled = ($buttons: JQuery<HTMLElement>) =>
 const noneDisabled = ($buttons: JQuery<HTMLElement>) =>
     $buttons.toArray().forEach((button) => expect(button, button.innerText).not.to.have.attr('disabled'))
 
+const macroButton = (name: string) =>
+    cy.get('.macros-panel', { timeout: 10000 }).contains('button', new RegExp(`^\\s*${name.replace(/_/g, ' ')}\\s*$`))
+
 describe('StitchLAB toolhead controls during a job', () => {
     it('keeps homing and XY jogs locked while paused, Z jogs usable', () => {
         visitDashboard('paused')
@@ -87,5 +90,54 @@ describe('StitchLAB toolhead controls during a job: jog wheel', () => {
         svg().find('#home_x').closest('a').should('have.class', 'disabled')
         svg().find('#home_z').closest('a').should('have.class', 'disabled')
         svg().find('a#stepper_off').should('have.class', 'disabled')
+    })
+})
+
+describe('StitchLAB job-file macros', () => {
+    it('are no buttons in the macro panel by default', () => {
+        visitDashboard('standby')
+        cy.get('.macros-panel').should('be.visible')
+        BUTTON_MACROS.forEach((name) => macroButton(name).should('be.visible'))
+        JOB_FILE_MACROS.forEach((name) =>
+            cy
+                .get('.macros-panel')
+                .contains('button', new RegExp(`^\\s*${name.replace(/_/g, ' ')}\\s*$`))
+                .should('not.exist')
+        )
+    })
+
+    it('show again once a user un-hides them in the settings', () => {
+        visitDashboard('standby', { macros: { mode: 'simple', hiddenMacros: [] } })
+        macroButton('M600').should('be.visible')
+        macroButton('COLOR_CHANGE').should('be.visible')
+    })
+
+    it('stay in a macro group a user built', () => {
+        const groupMacro = (name: string, pos: number) => ({
+            name,
+            pos,
+            color: 'group',
+            showInStandby: true,
+            showInPause: true,
+            showInPrinting: false,
+        })
+        visitDashboard('standby', {
+            macros: {
+                mode: 'expert',
+                macrogroups: {
+                    colour: {
+                        name: 'Colour',
+                        color: 'primary',
+                        showInStandby: true,
+                        showInPause: true,
+                        showInPrinting: false,
+                        macros: [groupMacro('M600', 1), groupMacro('COLOR_CHANGE', 2)],
+                    },
+                },
+            },
+        })
+        cy.get('.macrogroup_colour_panel', { timeout: 10000 }).should('be.visible')
+        cy.get('.macrogroup_colour_panel').contains('button', 'M600').should('be.visible')
+        cy.get('.macrogroup_colour_panel').contains('button', 'COLOR CHANGE').should('be.visible')
     })
 })

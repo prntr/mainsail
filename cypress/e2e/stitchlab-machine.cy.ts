@@ -1,5 +1,6 @@
 import {
     embroideryCommandAllowed,
+    JOB_FILE_MACROS,
     jobPhase,
     needleState,
     toolheadActionAllowed,
@@ -109,4 +110,8 @@ describe('StitchLAB machine rules', () => {
         })
     })
 
+    it('names the job-file macros in upper case, as Mainsail stores hidden macros', () => {
+        expect(JOB_FILE_MACROS).to.have.members(['M0', 'M00', 'M2', 'M30', 'M600', 'COLOR_CHANGE', 'SDCARD_PRINT_FILE'])
+        JOB_FILE_MACROS.forEach((name) => expect(name).to.equal(name.toUpperCase()))
+    })
 })
