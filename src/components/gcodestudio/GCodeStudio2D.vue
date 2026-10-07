@@ -211,6 +211,7 @@
                                         </v-col>
                                         <v-col cols="12" class="mt-2">
                                             <v-btn
+                                                v-if="hasTransform"
                                                 small
                                                 block
                                                 color="success"
@@ -225,6 +226,18 @@
                                                 @click="uploadAndStartTransformedGcode">
                                                 <v-icon left small>{{ mdiPlay }}</v-icon>
                                                 {{ $t('GCodeStudio.SaveAndStart') }}
+                                            </v-btn>
+                                            <v-btn
+                                                v-else
+                                                small
+                                                block
+                                                color="success"
+                                                class="gcode-studio__start-as-is"
+                                                :disabled="!canStartAsIs"
+                                                :loading="isStartingAsIs"
+                                                @click="startLoadedFileAsIs">
+                                                <v-icon left small>{{ mdiPlay }}</v-icon>
+                                                {{ $t('GCodeStudio.StartAsIs') }}
                                             </v-btn>
                                         </v-col>
                                     </v-row>
@@ -832,6 +845,11 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     selectedGcodeFile: string | null = null
     isUploadingRepositioned = false
     isStartingRepositioned = false
+    isStartingAsIs = false
+    // Where the shown design came from on the printer, and its content then.
+    // Null for a local file.
+    loadedPrinterFile: string | null = null
+    loadedPrinterFileHash = ''
     // Session state, not a saved setting: the edited G-code is not kept, so an
     // edit mode restored after a reload locked every placement control with
     // nothing to edit.
@@ -1206,6 +1224,18 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 
     get repositionedActionBusy(): boolean {
         return this.isUploadingRepositioned || this.isStartingRepositioned
+    }
+
+    // An unmoved design has nothing to save, so it starts as it is.
+    get canStartAsIs(): boolean {
+        return (
+            Boolean(this.loadedFile && this.originalGcode) &&
+            !this.hasTransform &&
+            !this.editMode &&
+            !this.isStartingAsIs &&
+            this.klipperReadyForGui &&
+            !this.printerIsPrinting
+        )
     }
 
     get livePosition() {
@@ -1888,6 +1918,45 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         }
     }
 
+    async startLoadedFileAsIs(): Promise<void> {
+        if (!this.canStartAsIs) return
+        if (this.refuseUnhomedStart()) return
+        const outside = this.designOutsideFrameMessage(this.originalGcode)
+        if (outside) {
+            this.$toast.error(outside)
+            return
+        }
+        this.isStartingAsIs = true
+        try {
+            const filename = await this.printerFileForLoadedDesign()
+            if (!filename) return
+            await this.$store.dispatch('stitchlabIntake/startPrint', {
+                filename,
+                placement: this.buildStartPlacement(false),
+                action: 'switchToDashboard',
+                loading: 'stitchlabIntakeStartPrint',
+            })
+        } finally {
+            this.isStartingAsIs = false
+        }
+    }
+
+    // The printer path holding exactly the design Studio shows: the file it
+    // came from while unchanged, otherwise an upload. A local file keeps its
+    // name; changed printer content gets the _edited name, so the original
+    // file stays as it was.
+    async printerFileForLoadedDesign(): Promise<string | null> {
+        const unchanged = sha256(this.originalGcode) === this.loadedPrinterFileHash
+        if (this.loadedPrinterFile && unchanged) return this.loadedPrinterFile
+
+        const filename = this.loadedPrinterFile ? this.getEditedFilename() : (this.loadedFile ?? '')
+        const path = this.loadedPrinterFile ? this.getEditedPath() : ''
+        const file = new File([this.originalGcode], filename, { type: 'text/plain' })
+        const result = await this.$store.dispatch('files/uploadFile', { file, path, root: 'gcodes' })
+        if (result === false) return null
+        return path ? `${path}/${result}` : result
+    }
+
     // The intake store refuses a start on an unhomed machine too, but only after
     // Save & Start has uploaded; checking first leaves no file behind.
     refuseUnhomedStart(): boolean {
@@ -2398,6 +2467,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
 
         const file = input.files[0]
         this.loadedFile = file.name
+        this.loadedPrinterFile = null
 
         const reader = new FileReader()
         reader.addEventListener('load', (event) => {
@@ -2413,6 +2483,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     clearLoadedFile(): void {
         if (this.editMode) this.exitEditMode()
         this.loadedFile = null
+        this.loadedPrinterFile = null
         this.fileData = ''
         this.originalGcode = ''
         this.scrubFileSize = 0
@@ -2470,6 +2541,8 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         this.downloadSnackbar.status = false
         this.loadedFile = this.downloadSnackbar.filename
         if (!text) return
+        this.loadedPrinterFile = this.loadedFile
+        this.loadedPrinterFileHash = sha256(text)
         this.loadGcode(text)
     }
 

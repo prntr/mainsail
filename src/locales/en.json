@@ -394,6 +394,7 @@
         "ShowNeedlePosition": "Show Toolhead Position",
         "ShowStitchPoints": "Show Stitch Points",
         "ShowTransformedGCode": "Show Transformed G-Code",
+        "StartAsIs": "Start Unchanged",
         "Stitch": "Stitch",
         "Stitches": "stitches",
         "StitchPoints": "Stitch Points",
