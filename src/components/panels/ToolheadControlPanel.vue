@@ -9,7 +9,7 @@
         <template #buttons>
             <v-menu v-if="showButtons" left offset-y :close-on-content-click="false" class="pa-0">
                 <template #activator="{ on, attrs }">
-                    <v-btn icon tile v-bind="attrs" :disabled="['printing'].includes(printer_state)" v-on="on">
+                    <v-btn icon tile v-bind="attrs" :disabled="homeLocked" v-on="on">
                         <v-icon>{{ mdiDotsVertical }}</v-icon>
                     </v-btn>
                 </template>
@@ -120,6 +120,7 @@ import BarsControl from '@/components/panels/ToolheadControls/BarsControl.vue'
 import BaseMixin from '../mixins/base'
 import CircleControl from '@/components/panels/ToolheadControls/CircleControl.vue'
 import ControlMixin from '@/components/mixins/control'
+import StitchlabToolheadMixin from '@/components/mixins/stitchlabToolhead'
 import CrossControl from '@/components/panels/ToolheadControls/CrossControl.vue'
 import MoveToControl from '@/components/panels/ToolheadControls/MoveToControl.vue'
 import Panel from '@/components/ui/Panel.vue'
@@ -138,7 +139,7 @@ import { mdiDotsVertical, mdiEngineOff, mdiGamepad, mdiSpeedometer, mdiMenuDown,
         ZoffsetControl,
     },
 })
-export default class ToolheadControlPanel extends Mixins(BaseMixin, ControlMixin) {
+export default class ToolheadControlPanel extends Mixins(BaseMixin, ControlMixin, StitchlabToolheadMixin) {
     mdiDotsVertical = mdiDotsVertical
     mdiEngineOff = mdiEngineOff
     mdiGamepad = mdiGamepad

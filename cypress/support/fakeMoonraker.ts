@@ -14,6 +14,8 @@ export interface FakeMoonraker {
 export interface FakeMoonrakerOptions {
     status: Status
     components?: string[]
+    // Mainsail's saved settings (database namespace 'mainsail'), as a user left them.
+    gui?: Record<string, unknown>
     // Answers for methods the defaults do not cover, by method name.
     answers?: Record<string, (params: any) => unknown>
 }
@@ -54,7 +56,11 @@ export function installFakeMoonraker(win: Window, options: FakeMoonrakerOptions)
         'machine.system_info': () => ({ system_info: {} }),
         'machine.proc_stats': () => ({ moonraker_stats: [], throttled_state: null, system_uptime: 100 }),
         'server.database.list': () => ({ namespaces: ['mainsail', 'maintenance'] }),
-        'server.database.get_item': (params) => ({ namespace: params?.namespace, key: params?.key ?? null, value: {} }),
+        'server.database.get_item': (params) => ({
+            namespace: params?.namespace,
+            key: params?.key ?? null,
+            value: params?.namespace === 'mainsail' ? JSON.parse(JSON.stringify(options.gui ?? {})) : {},
+        }),
         'server.webcams.list': () => ({ webcams: [] }),
         'printer.info': () => ({
             state: 'ready',

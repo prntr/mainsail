@@ -1,4 +1,9 @@
-import { embroideryCommandAllowed, jobPhase, needleState } from '../../src/plugins/stitchlabMachine'
+import {
+    embroideryCommandAllowed,
+    jobPhase,
+    needleState,
+    toolheadActionAllowed,
+} from '../../src/plugins/stitchlabMachine'
 
 describe('StitchLAB machine rules', () => {
     describe('needleState', () => {
@@ -83,4 +88,25 @@ describe('StitchLAB machine rules', () => {
             expect(embroideryCommandAllowed('STITCH_COUNTER', 'printing')).to.equal(true)
         })
     })
+
+    describe('toolheadActionAllowed', () => {
+        it('allows nothing while printing', () => {
+            ;(['home', 'jogXY', 'jogZ'] as const).forEach((action) =>
+                expect(toolheadActionAllowed(action, 'printing'), action).to.equal(false)
+            )
+        })
+
+        it('allows only Z jogs while paused', () => {
+            expect(toolheadActionAllowed('home', 'paused')).to.equal(false)
+            expect(toolheadActionAllowed('jogXY', 'paused')).to.equal(false)
+            expect(toolheadActionAllowed('jogZ', 'paused')).to.equal(true)
+        })
+
+        it('allows everything when no job runs', () => {
+            ;(['home', 'jogXY', 'jogZ'] as const).forEach((action) =>
+                expect(toolheadActionAllowed(action, 'idle'), action).to.equal(true)
+            )
+        })
+    })
+
 })

@@ -51,3 +51,17 @@ export function embroideryCommandAllowed(command: string, phase: JobPhase): bool
     if (phase === 'paused') return keepsZ
     return true
 }
+
+// What the toolhead panel does: home (motors off counts, it drops the
+// homing), jog X/Y, jog Z.
+export type ToolheadAction = 'home' | 'jogXY' | 'jogZ'
+
+// The machine cannot refuse a plain G1 jog. An XY jog during a pause drags
+// the fabric if the needle is down, and homing loses the job's position, so
+// both wait until the job is over. A Z jog during a pause only turns the
+// handwheel, and RESUME moves Z back.
+export function toolheadActionAllowed(action: ToolheadAction, phase: JobPhase): boolean {
+    if (phase === 'printing') return false
+    if (phase === 'paused') return action === 'jogZ'
+    return true
+}

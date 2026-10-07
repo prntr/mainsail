@@ -5,7 +5,7 @@
             <v-col class="col-12 pb-0 text-center">
                 <v-btn
                     small
-                    :disabled="['printing'].includes(printer_state)"
+                    :disabled="homeLocked"
                     :loading="loadings.includes('homeAll')"
                     :color="homedAxes.includes('xyz') ? 'primary' : 'warning'"
                     @click="doHome">
@@ -14,7 +14,7 @@
                 </v-btn>
                 <v-btn
                     v-if="enableXYHoming"
-                    :disabled="['printing'].includes(printer_state)"
+                    :disabled="homeLocked"
                     :loading="loadings.includes('homeAll')"
                     :color="homedAxes.includes('xy') ? 'primary' : 'warning'"
                     small
@@ -25,7 +25,7 @@
                 </v-btn>
                 <v-btn
                     v-if="existsQGL"
-                    :disabled="['printing'].includes(printer_state)"
+                    :disabled="homeLocked"
                     small
                     :loading="loadings.includes('qgl')"
                     :color="colorQuadGantryLevel"
@@ -35,7 +35,7 @@
                 </v-btn>
                 <v-btn
                     v-if="existsZtilt"
-                    :disabled="['printing'].includes(printer_state)"
+                    :disabled="homeLocked"
                     small
                     :loading="loadings.includes('zTilt')"
                     :color="colorZTilt"
@@ -45,7 +45,7 @@
                 </v-btn>
                 <v-btn
                     small
-                    :disabled="['printing'].includes(printer_state)"
+                    :disabled="homeLocked"
                     :color="homedAxes !== '' ? 'primary' : 'warning'"
                     class="ml-2"
                     @click="doSend('M84')">
@@ -60,13 +60,13 @@
                     <v-btn
                         v-for="steps of stepsXYsorted"
                         :key="'x-' + steps"
-                        :disabled="['printing'].includes(printer_state)"
+                        :disabled="jogXYLocked"
                         class="btnMinWidthAuto col btnGroup"
                         @click="doSendMove('X-' + steps, feedrateXY)">
                         <span class="body-2">–{{ steps }}</span>
                     </v-btn>
                     <v-btn
-                        :disabled="['printing'].includes(printer_state)"
+                        :disabled="homeLocked"
                         :color="homedAxes.includes('x') ? 'primary' : 'warning'"
                         :loading="loadings.includes('homeX')"
                         class="font-weight-bold btnHomeAxis btnGroup"
@@ -76,7 +76,7 @@
                     <v-btn
                         v-for="steps of stepsXYsortedReverse"
                         :key="'x+' + steps"
-                        :disabled="['printing'].includes(printer_state)"
+                        :disabled="jogXYLocked"
                         class="btnMinWidthAuto col btnGroup"
                         @click="doSendMove('X+' + steps, feedrateXY)">
                         <span class="body-2">+{{ steps }}</span>
@@ -91,13 +91,13 @@
                     <v-btn
                         v-for="steps of stepsXYsorted"
                         :key="'y-' + steps"
-                        :disabled="['printing'].includes(printer_state)"
+                        :disabled="jogXYLocked"
                         class="btnMinWidthAuto col btnGroup"
                         @click="doSendMove('Y-' + steps, feedrateXY)">
                         <span class="body-2">–{{ steps }}</span>
                     </v-btn>
                     <v-btn
-                        :disabled="['printing'].includes(printer_state)"
+                        :disabled="homeLocked"
                         :color="homedAxes.includes('y') ? 'primary' : 'warning'"
                         :loading="loadings.includes('homeY')"
                         class="font-weight-bold btnHomeAxis btnGroup"
@@ -107,7 +107,7 @@
                     <v-btn
                         v-for="steps of stepsXYsortedReverse"
                         :key="'y+' + steps"
-                        :disabled="['printing'].includes(printer_state)"
+                        :disabled="jogXYLocked"
                         class="btnMinWidthAuto col btnGroup"
                         @click="doSendMove('Y+' + steps, feedrateXY)">
                         <span class="body-2">+{{ steps }}</span>
@@ -122,13 +122,13 @@
                     <v-btn
                         v-for="steps of stepsZsorted"
                         :key="'z-' + steps"
-                        :disabled="['printing'].includes(printer_state)"
+                        :disabled="jogZLocked"
                         class="btnMinWidthAuto col btnGroup"
                         @click="doSendMove('Z-' + steps, feedrateZ)">
                         <span class="body-2">–{{ steps }}</span>
                     </v-btn>
                     <v-btn
-                        :disabled="['printing'].includes(printer_state)"
+                        :disabled="homeLocked"
                         :color="homedAxes.includes('z') ? 'primary' : 'warning'"
                         :loading="loadings.includes('homeZ')"
                         class="font-weight-bold btnHomeAxis btnGroup"
@@ -138,7 +138,7 @@
                     <v-btn
                         v-for="steps of stepsZsortedReverse"
                         :key="'z+' + steps"
-                        :disabled="['printing'].includes(printer_state)"
+                        :disabled="jogZLocked"
                         class="btnMinWidthAuto col btnGroup"
                         @click="doSendMove('Z+' + steps, feedrateZ)">
                         <span class="body-2">+{{ steps }}</span>
@@ -153,10 +153,11 @@
 import { Component, Mixins } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import ControlMixin from '@/components/mixins/control'
+import StitchlabToolheadMixin from '@/components/mixins/stitchlabToolhead'
 import { mdiEngineOff, mdiHome } from '@mdi/js'
 
 @Component
-export default class BarsControl extends Mixins(BaseMixin, ControlMixin) {
+export default class BarsControl extends Mixins(BaseMixin, ControlMixin, StitchlabToolheadMixin) {
     mdiEngineOff = mdiEngineOff
     mdiHome = mdiHome
 

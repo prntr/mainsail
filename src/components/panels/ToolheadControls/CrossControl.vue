@@ -23,7 +23,7 @@
                                         !yAxisHomed ||
                                         selectedCrossStep === null ||
                                         selectedCrossStep === undefined ||
-                                        ['printing'].includes(printer_state)
+                                        jogXYLocked
                                     "
                                     @click="doSendMove(`Y${reverseY ? '-' : '+'}${stepSize}`, feedrateXY)">
                                     <v-icon>{{ mdiChevronUp }}</v-icon>
@@ -37,7 +37,7 @@
                                         !zAxisHomed ||
                                         selectedCrossStep === null ||
                                         selectedCrossStep === undefined ||
-                                        ['printing'].includes(printer_state)
+                                        jogZLocked
                                     "
                                     @click="doSendMove(`Z${reverseZ ? '-' : '+'}${stepSize}`, feedrateZ)">
                                     <v-icon>{{ mdiChevronUp }}</v-icon>
@@ -53,7 +53,7 @@
                                         !xAxisHomed ||
                                         selectedCrossStep === null ||
                                         selectedCrossStep === undefined ||
-                                        ['printing'].includes(printer_state)
+                                        jogXYLocked
                                     "
                                     @click="doSendMove(`X${!reverseX ? '-' : '+'}${stepSize}`, feedrateXY)">
                                     <v-icon>{{ mdiChevronLeft }}</v-icon>
@@ -66,7 +66,7 @@
                                         !yAxisHomed ||
                                         selectedCrossStep === null ||
                                         selectedCrossStep === undefined ||
-                                        ['printing'].includes(printer_state)
+                                        jogXYLocked
                                     "
                                     @click="doSendMove(`Y${!reverseY ? '-' : '+'}${stepSize}`, feedrateXY)">
                                     <v-icon>{{ mdiChevronDown }}</v-icon>
@@ -80,7 +80,7 @@
                                         !xAxisHomed ||
                                         selectedCrossStep === null ||
                                         selectedCrossStep === undefined ||
-                                        ['printing'].includes(printer_state)
+                                        jogXYLocked
                                     "
                                     @click="doSendMove(`X${reverseX ? '-' : '+'}${stepSize}`, feedrateXY)">
                                     <v-icon>{{ mdiChevronRight }}</v-icon>
@@ -93,7 +93,7 @@
                                         !zAxisHomed ||
                                         selectedCrossStep === null ||
                                         selectedCrossStep === undefined ||
-                                        ['printing'].includes(printer_state)
+                                        jogZLocked
                                     "
                                     @click="doSendMove(`Z${!reverseZ ? '-' : '+'}${stepSize}`, feedrateZ)">
                                     <v-icon>{{ mdiChevronDown }}</v-icon>
@@ -107,7 +107,7 @@
                             <v-row dense style="margin-bottom: -2px !important">
                                 <v-col cols="6">
                                     <v-btn
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('homeAll')"
                                         :color="homedAxes.includes('xyz') ? 'primary' : 'warning'"
                                         height="30"
@@ -123,7 +123,7 @@
                                 <v-col cols="6" class="d-flex">
                                     <v-btn
                                         v-if="actionButton === 'qgl'"
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('qgl')"
                                         :color="colorQuadGantryLevel"
                                         height="30"
@@ -135,7 +135,7 @@
                                     </v-btn>
                                     <v-btn
                                         v-else-if="actionButton === 'ztilt'"
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('zTilt')"
                                         :color="colorZTilt"
                                         height="30"
@@ -147,7 +147,7 @@
                                     </v-btn>
                                     <v-btn
                                         v-else
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :color="homedAxes !== '' ? 'primary' : 'warning'"
                                         height="30"
                                         dense
@@ -162,7 +162,7 @@
                             <v-row dense>
                                 <v-col v-if="!enableXYHoming" cols="4" class="flex-grow-1">
                                     <v-btn
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('homeX')"
                                         :color="homedAxes.includes('x') ? 'primary' : 'warning'"
                                         tile
@@ -174,7 +174,7 @@
                                 </v-col>
                                 <v-col v-if="!enableXYHoming" cols="4" class="flex-grow-1">
                                     <v-btn
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('homeY')"
                                         :color="homedAxes.includes('y') ? 'primary' : 'warning'"
                                         tile
@@ -186,7 +186,7 @@
                                 </v-col>
                                 <v-col v-else cols="6" class="flex-grow-1">
                                     <v-btn
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('homeY')"
                                         :color="homedAxes.includes('xy') ? 'primary' : 'warning'"
                                         tile
@@ -198,7 +198,7 @@
                                 </v-col>
                                 <v-col :class="enableXYHoming ? 'col-6' : 'col-4'" class="flex-grow-1">
                                     <v-btn
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('homeZ')"
                                         :color="homedAxes.includes('z') ? 'primary' : 'warning'"
                                         tile
@@ -219,7 +219,7 @@
                             <v-row dense style="margin-bottom: -2px !important">
                                 <v-col cols="6">
                                     <v-btn
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('homeAll')"
                                         :color="homedAxes.includes('xyz') ? 'primary' : 'warning'"
                                         height="30"
@@ -235,7 +235,7 @@
                                 <v-col cols="6" class="d-flex">
                                     <v-btn
                                         v-if="actionButton === 'qgl'"
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('qgl')"
                                         :color="colorQuadGantryLevel"
                                         height="30"
@@ -247,7 +247,7 @@
                                     </v-btn>
                                     <v-btn
                                         v-else-if="actionButton === 'ztilt'"
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('zTilt')"
                                         :color="colorZTilt"
                                         height="30"
@@ -259,7 +259,7 @@
                                     </v-btn>
                                     <v-btn
                                         v-else
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :color="homedAxes !== '' ? 'primary' : 'warning'"
                                         height="30"
                                         dense
@@ -274,7 +274,7 @@
                             <v-row dense>
                                 <v-col v-if="!enableXYHoming" cols="4" class="flex-grow-1">
                                     <v-btn
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('homeX')"
                                         :color="homedAxes.includes('x') ? 'primary' : 'warning'"
                                         tile
@@ -286,7 +286,7 @@
                                 </v-col>
                                 <v-col v-if="!enableXYHoming" cols="4" class="flex-grow-1">
                                     <v-btn
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('homeY')"
                                         :color="homedAxes.includes('y') ? 'primary' : 'warning'"
                                         tile
@@ -298,7 +298,7 @@
                                 </v-col>
                                 <v-col v-else cols="6" class="flex-grow-1">
                                     <v-btn
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('homeY')"
                                         :color="homedAxes.includes('xy') ? 'primary' : 'warning'"
                                         tile
@@ -310,7 +310,7 @@
                                 </v-col>
                                 <v-col :class="enableXYHoming ? 'col-6' : 'col-4'" class="flex-grow-1">
                                     <v-btn
-                                        :disabled="['printing'].includes(printer_state)"
+                                        :disabled="homeLocked"
                                         :loading="loadings.includes('homeZ')"
                                         :color="homedAxes.includes('z') ? 'primary' : 'warning'"
                                         tile
@@ -362,13 +362,14 @@
 import { Component, Mixins } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import ControlMixin from '@/components/mixins/control'
+import StitchlabToolheadMixin from '@/components/mixins/stitchlabToolhead'
 import Responsive from '@/components/ui/Responsive.vue'
 import { mdiChevronUp, mdiChevronLeft, mdiChevronRight, mdiChevronDown, mdiEngineOff, mdiHome } from '@mdi/js'
 
 @Component({
     components: { Responsive },
 })
-export default class CrossControl extends Mixins(BaseMixin, ControlMixin) {
+export default class CrossControl extends Mixins(BaseMixin, ControlMixin, StitchlabToolheadMixin) {
     mdiChevronUp = mdiChevronUp
     mdiChevronLeft = mdiChevronLeft
     mdiChevronRight = mdiChevronRight

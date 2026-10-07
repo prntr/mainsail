@@ -37,7 +37,7 @@
                             :suffix="'X'"
                             :step="0.01"
                             :current-pos="gcodePositions.x"
-                            :readonly="['printing'].includes(printer_state)"
+                            :readonly="jogXYLocked"
                             :disabled="!xAxisHomed"
                             @submit="sendCmd" />
                     </v-col>
@@ -48,7 +48,7 @@
                             :suffix="'Y'"
                             :step="0.01"
                             :current-pos="gcodePositions.y"
-                            :readonly="['printing'].includes(printer_state)"
+                            :readonly="jogXYLocked"
                             :disabled="!yAxisHomed"
                             @submit="sendCmd" />
                     </v-col>
@@ -59,7 +59,7 @@
                             :suffix="'Z'"
                             :step="0.001"
                             :current-pos="gcodePositions.z"
-                            :readonly="['printing'].includes(printer_state)"
+                            :readonly="jogZLocked"
                             :disabled="!zAxisHomed"
                             @submit="sendCmd" />
                     </v-col>
@@ -73,6 +73,7 @@
 import { Component, Mixins, Watch } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import ControlMixin from '@/components/mixins/control'
+import StitchlabToolheadMixin from '@/components/mixins/stitchlabToolhead'
 import MoveToInput from '@/components/inputs/MoveToInput.vue'
 import Responsive from '@/components/ui/Responsive.vue'
 import { mdiCrosshairsGps, mdiGrid } from '@mdi/js'
@@ -80,7 +81,7 @@ import { mdiCrosshairsGps, mdiGrid } from '@mdi/js'
 @Component({
     components: { MoveToInput, Responsive },
 })
-export default class MoveToControl extends Mixins(BaseMixin, ControlMixin) {
+export default class MoveToControl extends Mixins(BaseMixin, ControlMixin, StitchlabToolheadMixin) {
     mdiCrosshairsGps = mdiCrosshairsGps
     mdiGrid = mdiGrid
 
