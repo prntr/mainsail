@@ -7,7 +7,7 @@
                     :color="color"
                     :class="paramArray.length ? 'macroWithParameters' : ''"
                     :loading="loadings.includes('macro_' + macro.name)"
-                    :disabled="disabled"
+                    :disabled="isDisabled"
                     class="flex-grow-1"
                     v-bind="attrs"
                     v-on="on"
@@ -22,7 +22,7 @@
             <v-menu v-if="!isMobile" offset-y :close-on-content-click="false">
                 <template #activator="{ on, attrs }">
                     <v-btn
-                        :disabled="disabled"
+                        :disabled="isDisabled"
                         :color="color"
                         v-bind="attrs"
                         class="minwidth-0 px-1 btnMacroMenu"
@@ -60,7 +60,7 @@
             </v-menu>
             <template v-else>
                 <v-btn
-                    :disabled="disabled"
+                    :disabled="isDisabled"
                     :color="color"
                     class="minwidth-0 px-1 btnMacroMenu"
                     small
@@ -112,6 +112,7 @@ import { mdiCloseThick, mdiMenuDown, mdiRefresh } from '@mdi/js'
 import Panel from '@/components/ui/Panel.vue'
 import { TranslateResult } from 'vue-i18n'
 import { PrinterStateMacro } from '@/store/printer/types'
+import { embroideryCommandAllowed, jobPhase } from '@/plugins/stitchlabMachine'
 
 interface param {
     type: 'int' | 'double' | 'string' | null
@@ -157,6 +158,11 @@ export default class MacroButton extends Mixins(BaseMixin) {
 
     get klipperMacro() {
         return this.$store.getters['printer/getMacro'](this.macro.name)
+    }
+
+    // StitchLAB: needle and homing macros are not offered during a job.
+    get isDisabled(): boolean {
+        return this.disabled || !embroideryCommandAllowed(this.macro.name, jobPhase(this.printer_state))
     }
 
     get isGcodeStyle() {
