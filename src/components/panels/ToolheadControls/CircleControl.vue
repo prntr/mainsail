@@ -537,9 +537,10 @@
 import { Component, Mixins } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
 import ControlMixin from '@/components/mixins/control'
+import StitchlabToolheadMixin from '@/components/mixins/stitchlabToolhead'
 
 @Component
-export default class CircleControl extends Mixins(BaseMixin, ControlMixin) {
+export default class CircleControl extends Mixins(BaseMixin, ControlMixin, StitchlabToolheadMixin) {
     /**
      * SVG paths for home buttons
      */
@@ -610,30 +611,26 @@ export default class CircleControl extends Mixins(BaseMixin, ControlMixin) {
         return Array.from(new Set([...(steps ?? [])])).sort((a, b) => a - b)
     }
 
-    get isPrinting() {
-        return ['printing'].includes(this.printer_state)
-    }
-
     get stepTextClass() {
-        if (!this.homedAxes.includes('xy') || this.isPrinting) return ['disabled']
+        if (!this.homedAxes.includes('xy') || this.jogXYLocked) return ['disabled']
 
         return []
     }
 
     get xStepClass() {
-        if (!this.homedAxes.includes('x') || this.isPrinting) return ['disabled']
+        if (!this.homedAxes.includes('x') || this.jogXYLocked) return ['disabled']
 
         return []
     }
 
     get yStepClass() {
-        if (!this.homedAxes.includes('y') || this.isPrinting) return ['disabled']
+        if (!this.homedAxes.includes('y') || this.jogXYLocked) return ['disabled']
 
         return []
     }
 
     get zStepClass() {
-        if (!this.homedAxes.includes('z') || this.isPrinting) return ['disabled']
+        if (!this.homedAxes.includes('z') || this.jogZLocked) return ['disabled']
 
         return []
     }
@@ -641,7 +638,7 @@ export default class CircleControl extends Mixins(BaseMixin, ControlMixin) {
     get xHomeClass() {
         let classes = []
         if (this.homedAxes.includes('x')) classes.push('homed')
-        if (this.isPrinting) classes.push('disabled')
+        if (this.homeLocked) classes.push('disabled')
 
         return classes
     }
@@ -649,7 +646,7 @@ export default class CircleControl extends Mixins(BaseMixin, ControlMixin) {
     get yHomeClass() {
         let classes = []
         if (this.homedAxes.includes('y')) classes.push('homed')
-        if (this.isPrinting) classes.push('disabled')
+        if (this.homeLocked) classes.push('disabled')
 
         return classes
     }
@@ -657,7 +654,7 @@ export default class CircleControl extends Mixins(BaseMixin, ControlMixin) {
     get xyHomeClass() {
         let classes = []
         if (this.homedAxes.includes('xy')) classes.push('homed')
-        if (this.isPrinting) classes.push('disabled')
+        if (this.homeLocked) classes.push('disabled')
 
         return classes
     }
@@ -665,7 +662,7 @@ export default class CircleControl extends Mixins(BaseMixin, ControlMixin) {
     get xyzHomeClass() {
         let classes = []
         if (this.homedAxes.includes('xyz')) classes.push('homed')
-        if (this.isPrinting) classes.push('disabled')
+        if (this.homeLocked) classes.push('disabled')
 
         return classes
     }
@@ -673,14 +670,14 @@ export default class CircleControl extends Mixins(BaseMixin, ControlMixin) {
     get zHomeClass() {
         let classes = []
         if (this.homedAxes.includes('z')) classes.push('homed')
-        if (this.isPrinting) classes.push('disabled')
+        if (this.homeLocked) classes.push('disabled')
 
         return classes
     }
 
     get colorSpecialButton() {
         let classes = []
-        if (this.isPrinting) classes.push('disabled')
+        if (this.homeLocked) classes.push('disabled')
         if (this.existsQGL) classes.push(this.colorQuadGantryLevel)
         else if (this.existsZtilt) classes.push(this.colorZTilt)
 
@@ -690,7 +687,7 @@ export default class CircleControl extends Mixins(BaseMixin, ControlMixin) {
     get motorsOffClass() {
         let classes = []
         classes.push(this.homedAxes !== '' ? 'primary' : 'warning')
-        if (this.isPrinting) classes.push('disabled')
+        if (this.homeLocked) classes.push('disabled')
 
         return classes
     }

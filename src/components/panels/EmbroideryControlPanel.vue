@@ -5,11 +5,12 @@
         :title="$t('Panels.EmbroideryPanel.Headline')"
         card-class="embroidery-control-panel">
         <v-card-text>
-            <!-- Needle State Display -->
+            <!-- Needle state, read from the machine -->
             <div class="text-center mb-4">
-                <v-chip :color="physicalStateColor" dark>
-                    {{ physicalStateText }}
+                <v-chip :color="needleStateColor" dark class="embroidery-control-panel__state" :data-state="needle">
+                    {{ needleStateText }}
                 </v-chip>
+                <div v-if="hint" class="text-caption mt-2 embroidery-control-panel__hint">{{ hint }}</div>
             </div>
 
             <!-- Needle Toggle & Stitch Buttons -->
@@ -19,9 +20,10 @@
                         block
                         large
                         :color="toggleButtonColor"
-                        :disabled="!canMoveNeedle"
+                        class="embroidery-control-panel__toggle-btn"
+                        :disabled="!canRun('NEEDLE_TOGGLE')"
                         :loading="loadings.includes('needleToggle')"
-                        @click="toggleNeedle">
+                        @click="send('NEEDLE_TOGGLE', 'needleToggle')">
                         <v-icon left>
                             {{ mdiSwapVertical }}
                         </v-icon>
@@ -33,9 +35,10 @@
                         block
                         large
                         color="secondary"
-                        :disabled="!canMoveNeedle"
+                        class="embroidery-control-panel__stitch-btn"
+                        :disabled="!canRun('STITCH')"
                         :loading="loadings.includes('stitch')"
-                        @click="makeStitch">
+                        @click="send('STITCH', 'stitch')">
                         <v-icon left>
                             {{ mdiArrowUp }}
                         </v-icon>
@@ -49,10 +52,10 @@
                 block
                 large
                 color="secondary"
-                class="mb-4"
-                :disabled="!canMoveNeedle"
+                class="mb-4 embroidery-control-panel__lock-btn"
+                :disabled="!canRun('LOCK_STITCH')"
                 :loading="loadings.includes('lockStitch')"
-                @click="makeLockStitch">
+                @click="send('LOCK_STITCH', 'lockStitch')">
                 <v-icon left>
                     {{ mdiLock }}
                 </v-icon>
@@ -65,9 +68,9 @@
                 large
                 color="warning"
                 class="embroidery-control-panel__zero-btn"
-                :disabled="!klipperReadyForGui"
+                :disabled="!canRun('ZERO_NEEDLE_POSITION')"
                 :loading="loadings.includes('zeroNeedle')"
-                @click="zeroNeedlePosition">
+                @click="send('ZERO_NEEDLE_POSITION', 'zeroNeedle')">
                 <v-icon left>
                     {{ mdiTarget }}
                 </v-icon>
@@ -78,143 +81,81 @@
 </template>
 
 <script lang="ts">
-import { Component, Mixins, Watch } from 'vue-property-decorator'
+import { Component, Mixins } from 'vue-property-decorator'
 import BaseMixin from '@/components/mixins/base'
-import ControlMixin from '@/components/mixins/control'
 import Panel from '@/components/ui/Panel.vue'
 import { needleIcon } from '@/components/icons/needleIcon'
+import { embroideryCommandAllowed, jobPhase, JobPhase, needleState, NeedleState } from '@/plugins/stitchlabMachine'
 import { mdiArrowUp, mdiSwapVertical, mdiTarget, mdiLock } from '@mdi/js'
 
 @Component({
     components: { Panel },
 })
-export default class EmbroideryControlPanel extends Mixins(BaseMixin, ControlMixin) {
+export default class EmbroideryControlPanel extends Mixins(BaseMixin) {
     mdiNeedle = needleIcon
     mdiArrowUp = mdiArrowUp
     mdiSwapVertical = mdiSwapVertical
     mdiTarget = mdiTarget
     mdiLock = mdiLock
 
-    /**
-     * Track physical needle position (independent of logical Z position)
-     * This is needed because NEEDLE_TOGGLE uses G92 to restore Z position
-     * after physical movement, so the frontend can't detect the change.
-     */
-    isPhysicallyDown: boolean = false
-
-    /**
-     * Get physical Z position from toolhead (actual motor position)
-     */
-    get physicalZPosition(): number {
-        return this.$store.state.printer.toolhead?.position[2] ?? 0
+    // Every browser on the machine reads the same toolhead position, so all of
+    // them show the same state, after a reload and after a job too.
+    get needle(): NeedleState {
+        const toolhead = this.$store.state.printer.toolhead
+        return needleState(toolhead?.position?.[2], toolhead?.homed_axes)
     }
 
-    /**
-     * Watch physical Z position - when it returns to 0 (after homing),
-     * reset the isPhysicallyDown state to match actual needle position
-     */
-    @Watch('physicalZPosition')
-    onPhysicalZPositionChanged(newVal: number): void {
-        // After homing, physical Z is 0 and needle is UP
-        // Use a small threshold to account for floating point
-        if (Math.abs(newVal) < 0.1) {
-            this.isPhysicallyDown = false
+    get phase(): JobPhase {
+        return jobPhase(this.printer_state)
+    }
+
+    get needleStateText(): string {
+        switch (this.needle) {
+            case 'up':
+                return `${this.$t('Panels.EmbroideryPanel.NeedleUp')} (0°)`
+            case 'down':
+                return `${this.$t('Panels.EmbroideryPanel.NeedleDown')} (180°)`
+            case 'between':
+                return this.$t('Panels.EmbroideryPanel.NeedleBetween') as string
+            default:
+                return this.$t('Panels.EmbroideryPanel.NeedleUnknown') as string
         }
     }
 
-    /**
-     * Dynamic text for toggle button - shows the ACTION that will be performed
-     * Based on physical state (not logical Z position)
-     */
+    get needleStateColor(): string {
+        if (this.needle === 'up') return 'success'
+        if (this.needle === 'unknown') return 'grey'
+        return 'warning'
+    }
+
+    // The action the toggle performs: NEEDLE_TOGGLE takes a needle that is
+    // down or between positions up.
     get toggleButtonText(): string {
-        if (this.isPhysicallyDown) {
-            return this.$t('Panels.EmbroideryPanel.ToggleToUp') as string
-        } else {
-            return this.$t('Panels.EmbroideryPanel.ToggleToDown') as string
-        }
+        if (this.needle === 'up') return this.$t('Panels.EmbroideryPanel.ToggleToDown') as string
+        if (this.needle === 'unknown') return this.$t('Panels.EmbroideryPanel.Toggle') as string
+        return this.$t('Panels.EmbroideryPanel.ToggleToUp') as string
     }
 
-    /**
-     * Button color based on physical needle state
-     */
     get toggleButtonColor(): string {
-        return this.isPhysicallyDown ? 'warning' : 'success'
+        return this.needle === 'up' ? 'success' : 'warning'
     }
 
-    /**
-     * Physical state text for display - shows actual needle position
-     * Format: "UP (0°)" or "DOWN (180°)"
-     */
-    get physicalStateText(): string {
-        if (this.isPhysicallyDown) {
-            return 'DOWN (180°)'
-        } else {
-            return 'UP (0°)'
-        }
+    get hint(): string | null {
+        if (this.phase === 'printing') return this.$t('Panels.EmbroideryPanel.HintPrinting') as string
+        if (this.needle === 'unknown') return this.$t('Panels.EmbroideryPanel.HintHomeZ') as string
+        if (this.phase === 'paused') return this.$t('Panels.EmbroideryPanel.HintPaused') as string
+        return null
     }
 
-    /**
-     * Physical state color for chip display
-     */
-    get physicalStateColor(): string {
-        return this.isPhysicallyDown ? 'warning' : 'success'
+    // Every needle macro needs a homed Z, and the job phase decides the rest.
+    canRun(command: string): boolean {
+        if (!this.klipperReadyForGui || this.needle === 'unknown') return false
+        return embroideryCommandAllowed(command, this.phase)
     }
 
-    /**
-     * Check if needle movements are allowed
-     */
-    get canMoveNeedle(): boolean {
-        return this.klipperReadyForGui && !this.printerIsPrinting
-    }
-
-    /**
-     * Toggle needle by moving 2.5mm (half rotation) for manual control
-     * The macro uses G92 to restore Z position, so we track physical state locally
-     */
-    toggleNeedle(): void {
-        const gcode = 'NEEDLE_TOGGLE'
+    send(gcode: string, loading: string): void {
         this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'needleToggle' })
-
-        // Toggle physical state locally (since G92 hides the actual movement)
-        this.isPhysicallyDown = !this.isPhysicallyDown
-    }
-
-    /**
-     * Perform one complete stitch cycle (DOWN → UP) without changing logical Z
-     */
-    makeStitch(): void {
-        const gcode = 'STITCH'
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'stitch' })
-    }
-
-    /**
-     * Perform lock stitch - 3 rapid stitches in place to secure thread
-     */
-    makeLockStitch(): void {
-        const gcode = 'LOCK_STITCH'
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'lockStitch' })
-    }
-
-    /**
-     * Zero the needle position without homing
-     * Uses ZERO_NEEDLE_POSITION macro (which uses G92 Z0)
-     */
-    zeroNeedlePosition(): void {
-        const gcode = 'ZERO_NEEDLE_POSITION'
-        this.$store.dispatch('server/addEvent', { message: gcode, type: 'command' })
-        this.$socket.emit('printer.gcode.script', { script: gcode }, { loading: 'zeroNeedle' })
-
-        // Reset physical state - after zero, needle is assumed to be at UP
-        this.isPhysicallyDown = false
+        this.$socket.emit('printer.gcode.script', { script: gcode }, { loading })
     }
 }
 </script>
-
-<style scoped>
-.embroidery-control-panel {
-    /* Custom styling for embroidery panel if needed */
-}
-</style>

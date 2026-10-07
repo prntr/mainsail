@@ -107,6 +107,9 @@ export interface GuiState {
         showNeedlePosition: boolean
         showFrameBorder: boolean
         showTransformedGcode: boolean
+        designOffsetX: number
+        designOffsetY: number
+        moveMode: boolean
         rotationDeg: number
         rotationPivot: string
         backgroundColor: string

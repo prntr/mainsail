@@ -1,9 +1,15 @@
 /**
- * Lightweight G-Code parser for embroidery preview.
+ * Embroidery G-code to preview geometry, for G-Code Studio.
  *
- * Extracts geometry lines, stitch points, and color changes from embroidery G-Code
- * using the same GCodeToGeometry parser that GCode Studio 2D uses, but without
- * Paper.js dependency.
+ * Moves go through GCodeToGeometry (public/lib/gcode2dviewer), which only
+ * understands G and M words; a macro line such as COLOR_CHANGE makes it throw.
+ * So this reads every line first and hands the parser only XY moves and the
+ * modal codes that change how it reads them. Everything else is read here.
+ *
+ * Stitch model (the beta6 G-code contract): one Z step is one stitch, the
+ * needle going through the fabric once. XY moves only place the hoop; a G0
+ * move is a jump unless the file has no G1 moves at all (Ink/Stitch writes
+ * only G0, with Z-only lines for the stitches).
  */
 
 declare global {
@@ -16,13 +22,13 @@ interface GCodeToGeometryApi {
     parse(gcode: string): GCodeGeometryResult
 }
 
-interface GCodeGeometryPoint {
+export interface GCodeGeometryPoint {
     x: number
     y: number
     z?: number
 }
 
-interface GCodeGeometryLine {
+export interface GCodeGeometryLine {
     type: string
     start: GCodeGeometryPoint
     end: GCodeGeometryPoint
@@ -64,7 +70,24 @@ export interface ParsedEmbroidery {
 }
 
 const DEFAULT_STITCH_COLOR = '#E76F51'
+// GCodeToGeometry skips a G1 move whose feed rate is zero, and the files
+// rarely set one.
 const DEFAULT_FEEDRATE = 1200
+
+// First command of a line, after an optional line number: G1, M600,
+// COLOR_CHANGE, NEEDLE_TOGGLE ...
+const COMMAND_WORD = /^(?:N\d+\s*)?([GM]\d+(?:\.\d+)?|[A-Z_][A-Z0-9_]*)/i
+const MOVE_COMMAND = /^G0*([0-3])$/i
+// Ink/Stitch writes M00, Klipper users M0 or M600; TurtleStitch writes COLOR_CHANGE.
+const COLOR_CHANGE_COMMAND = /^(COLOR_CHANGE|M0*0|M0*600)$/i
+// Plane, units and absolute/relative: they change how later moves read.
+const MODAL_COMMAND = /^G0*(17|18|19|20|21|90|91)$/i
+const XY_WORD = /[XY]\s*[-+]?[\d.]/i
+const Z_WORD = /Z\s*[-+]?[\d.]/i
+const Z_WORDS = /\s*Z\s*[-+]?[\d.]+/gi
+const FEEDRATE_WORD = /F\s*[-+]?[\d.]/i
+const COLOR_COMMENT = /;\s*color\s+r:(\d+)\s+g:(\d+)\s+b:(\d+)/i
+const STITCH_COUNT_HEADER = /\(STITCH_COUNT:(\d+)\)/i
 
 function normalizeLineEndings(gcode: string): string {
     return gcode
@@ -73,22 +96,16 @@ function normalizeLineEndings(gcode: string): string {
         .replace(/\uFEFF/g, '')
 }
 
-function normalizeGcode(gcode: string): string {
+function normalizeDecimalCommas(gcode: string): string {
     return gcode.replace(/(-?\d+),(\d+)/g, '$1.$2')
 }
 
-function appendFeedrate(line: string, feedrate: number): string {
-    const semicolonIndex = line.indexOf(';')
-    const parenIndex = line.indexOf('(')
-    let insertIndex = -1
+function withoutComment(line: string): string {
+    return line.split(';')[0].split('(')[0].trim()
+}
 
-    if (semicolonIndex >= 0) insertIndex = semicolonIndex
-    if (parenIndex >= 0) insertIndex = insertIndex === -1 ? parenIndex : Math.min(insertIndex, parenIndex)
-
-    if (insertIndex >= 0) {
-        return line.slice(0, insertIndex).trimEnd() + ` F${feedrate} ` + line.slice(insertIndex)
-    }
-    return line.trimEnd() + ` F${feedrate}`
+function hexColor(r: number, g: number, b: number): string {
+    return '#' + [r, g, b].map((channel) => channel.toString(16).padStart(2, '0')).join('')
 }
 
 export function parseEmbroideryGcode(gcode: string, stitchColor?: string): ParsedEmbroidery | null {
@@ -99,91 +116,77 @@ export function parseEmbroideryGcode(gcode: string, stitchColor?: string): Parse
 
     const defaultColor = stitchColor ?? DEFAULT_STITCH_COLOR
     const rawGcode = normalizeLineEndings(gcode)
-    const normalizedGcode = normalizeGcode(rawGcode)
     const rawLines = rawGcode.split('\n')
-    const lines = normalizedGcode.split('\n')
-    const headerMatch = rawGcode.match(/\(STITCH_COUNT:(\d+)\)/i)
+    const lines = normalizeDecimalCommas(rawGcode).split('\n')
+    const headerMatch = rawGcode.match(STITCH_COUNT_HEADER)
     const headerStitchCount = headerMatch ? parseInt(headerMatch[1]) : null
-    let stitchCountFromMoves = 0
-    let jumpCount = 0
 
-    const processedLines: string[] = []
+    const geometryInput: string[] = []
     const moveOffsets: number[] = []
     const moveColors: string[] = []
     const colorChangeIndices: number[] = []
+    const stitchPointMoveIndices: number[] = []
     let currentColor = defaultColor
     let offset = 0
-    const feedratePattern = /\bF[-+]?\d*\.?\d+/i
+    let zSteps = 0
     let g0Count = 0
     let g1Count = 0
-    const stitchPointMoveIndices: number[] = []
+
+    // A '; color' comment and the COLOR_CHANGE after it are one change.
+    const markColorChange = () => {
+        if (colorChangeIndices[colorChangeIndices.length - 1] !== moveColors.length) {
+            colorChangeIndices.push(moveColors.length)
+        }
+    }
 
     lines.forEach((line, index) => {
         const rawLine = rawLines[index] ?? line
         offset += rawLine.length + 1
-        const trimmed = line.trim()
-        const rawTrimmed = rawLine.trim()
 
-        const colorMatch = rawTrimmed.match(/;\s*color\s+r:(\d+)\s+g:(\d+)\s+b:(\d+)/i)
+        const colorMatch = rawLine.match(COLOR_COMMENT)
         if (colorMatch) {
-            const r = parseInt(colorMatch[1])
-            const g = parseInt(colorMatch[2])
-            const b = parseInt(colorMatch[3])
-            currentColor = `#${r.toString(16).padStart(2, '0')}${g
-                .toString(16)
-                .padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
-            colorChangeIndices.push(moveColors.length)
+            currentColor = hexColor(parseInt(colorMatch[1]), parseInt(colorMatch[2]), parseInt(colorMatch[3]))
+            markColorChange()
             return
         }
 
-        if (!trimmed || trimmed.startsWith(';') || trimmed.startsWith('(')) {
+        const code = withoutComment(line)
+        const command = code.match(COMMAND_WORD)?.[1] ?? ''
+        if (COLOR_CHANGE_COMMAND.test(command)) {
+            markColorChange()
+            return
+        }
+        if (MODAL_COMMAND.test(command)) {
+            geometryInput.push(code)
             return
         }
 
-        const moveMatch = trimmed.match(/G0*([0-3])(?=[^0-9]|$)/i)
-        const hasXY = /[XY]/i.test(trimmed)
-        const hasZ = /\bZ[\d.-]+/i.test(trimmed)
-        const isZOnly = !!(moveMatch && hasZ && !hasXY)
+        const move = command.match(MOVE_COMMAND)
+        if (!move) return
 
-        if (isZOnly) {
-            if (headerStitchCount === null) {
-                stitchCountFromMoves += 1
-            }
-            if (moveColors.length > 0) {
-                stitchPointMoveIndices.push(moveColors.length - 1)
-            }
+        const hasXY = XY_WORD.test(code)
+        const hasZ = Z_WORD.test(code)
+        if (hasZ && !hasXY) {
+            zSteps += 1
+            if (moveColors.length > 0) stitchPointMoveIndices.push(moveColors.length - 1)
             return
         }
+        if (!hasXY) return
 
-        if (moveMatch && hasXY) {
-            const code = moveMatch[1]
-            moveOffsets.push(offset)
-            if (code === '0') {
-                jumpCount += 1
-                g0Count += 1
-            } else if (headerStitchCount === null) {
-                stitchCountFromMoves += 1
-                g1Count += 1
-            }
-            moveColors.push(currentColor)
-            let processedLine = hasZ ? line.replace(/\s+Z[\d.-]+/gi, '') : line
-            if (code === '1' && !feedratePattern.test(processedLine)) {
-                processedLine = appendFeedrate(processedLine, DEFAULT_FEEDRATE)
-            }
-            processedLines.push(processedLine)
-            if (hasZ) {
-                stitchPointMoveIndices.push(moveColors.length - 1)
-            }
-            return
-        }
+        const isJump = move[1] === '0'
+        if (isJump) g0Count += 1
+        else g1Count += 1
+        moveOffsets.push(offset)
+        moveColors.push(currentColor)
+        if (hasZ) stitchPointMoveIndices.push(moveColors.length - 1)
 
-        processedLines.push(line)
+        const xyOnly = code.replace(Z_WORDS, '')
+        geometryInput.push(isJump || FEEDRATE_WORD.test(xyOnly) ? xyOnly : `${xyOnly} F${DEFAULT_FEEDRATE}`)
     })
 
-    const processedGcode = processedLines.filter((line) => line !== '').join('\n')
     let geometry: GCodeGeometryResult
     try {
-        geometry = window.GCodeToGeometry.parse(processedGcode)
+        geometry = window.GCodeToGeometry.parse(geometryInput.join('\n'))
     } catch (error) {
         window.console.error('Failed to parse G-code', error)
         return null
@@ -193,6 +196,10 @@ export function parseEmbroideryGcode(gcode: string, stitchColor?: string): Parse
         return null
     }
 
+    if (geometry.lines.length !== moveColors.length) {
+        window.console.warn('G-code parse mismatch: move count does not match geometry output')
+    }
+
     const unitScale = geometry.displayInInch === false ? 25.4 : 1
     const scalePoint = (point: GCodeGeometryPoint): GCodeGeometryPoint => ({
         x: point.x * unitScale,
@@ -200,48 +207,34 @@ export function parseEmbroideryGcode(gcode: string, stitchColor?: string): Parse
         z: point.z !== undefined ? point.z * unitScale : undefined,
     })
 
-    const scaledLines = geometry.lines.map((line) => ({
-        type: line.type,
-        start: scalePoint(line.start),
-        end: scalePoint(line.end),
-        beziers: line.beziers
-            ? line.beziers.map((bezier) => ({
-                  p0: scalePoint(bezier.p0),
-                  p1: scalePoint(bezier.p1),
-                  p2: scalePoint(bezier.p2),
-                  p3: scalePoint(bezier.p3),
-              }))
-            : undefined,
-    }))
-
-    const renderLines: RenderLine[] = scaledLines.map((line, index) => ({
-        line,
+    const renderLines: RenderLine[] = geometry.lines.map((line, index) => ({
+        line: {
+            type: line.type,
+            start: scalePoint(line.start),
+            end: scalePoint(line.end),
+            beziers: line.beziers?.map((bezier) => ({
+                p0: scalePoint(bezier.p0),
+                p1: scalePoint(bezier.p1),
+                p2: scalePoint(bezier.p2),
+                p3: scalePoint(bezier.p3),
+            })),
+        },
         color: moveColors[index] ?? defaultColor,
         moveIndex: index,
     }))
 
-    const size = {
-        min: scalePoint(geometry.size.min),
-        max: scalePoint(geometry.size.max),
-    }
-    const designWidth = Math.abs(size.max.x - size.min.x)
-    const designHeight = Math.abs(size.max.y - size.min.y)
-    const designCenter = {
-        x: (size.max.x + size.min.x) / 2,
-        y: (size.max.y + size.min.y) / 2,
-    }
+    const min = scalePoint(geometry.size.min)
+    const max = scalePoint(geometry.size.max)
     const treatG0AsStitch = g1Count === 0 && g0Count > 0
-    const normalizedJumpCount = treatG0AsStitch ? 0 : jumpCount
-    const stitchCount = headerStitchCount ?? (treatG0AsStitch ? g0Count : stitchCountFromMoves)
 
     return {
         renderLines,
         moveOffsets,
-        stitchCount,
-        jumpCount: normalizedJumpCount,
-        designWidth,
-        designHeight,
-        designCenter,
+        stitchCount: headerStitchCount ?? zSteps,
+        jumpCount: treatG0AsStitch ? 0 : g0Count,
+        designWidth: Math.abs(max.x - min.x),
+        designHeight: Math.abs(max.y - min.y),
+        designCenter: { x: (max.x + min.x) / 2, y: (max.y + min.y) / 2 },
         treatG0AsStitch,
         stitchPointMoveIndices,
         colorChangeIndices,

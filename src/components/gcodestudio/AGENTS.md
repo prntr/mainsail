@@ -16,10 +16,18 @@ Key flows
   - Local file input -> `loadGcode(text)`
   - Server files via Moonraker -> `loadFile('gcodes/...')`
 - Parser:
+  - `src/lib/embroideryPreview/parseEmbroideryGcode.ts` (pure, Cypress spec
+    `cypress/e2e/stitchlab-preview-parser.cy.ts`); Studio has no parser of its own.
   - `gcodeToGeometryUrl` script is loaded at runtime.
   - `window.GCodeToGeometry.parse()` returns geometry in inches unless `displayInInch === false`.
   - Normalize line endings + decimal commas.
+  - Only XY moves and modal codes (G17-G21, G90, G91) reach GCodeToGeometry; it throws
+    on macro lines such as `COLOR_CHANGE`.
   - Strip Z on XY moves for geometry, but record Z-only or XY+Z as stitch markers.
+  - Stitch count: the `(STITCH_COUNT:n)` header, else the number of Z-only lines
+    (one Z step = one stitch, as in the intake).
+  - Colour changes: `; color r: g: b:` comments (set the colour), `COLOR_CHANGE`,
+    `M0`/`M00`, `M600`.
 - Transform pipeline (preview + export):
   - Preview transforms use `applyDesignTransform()` and `toDesignPoint()`.
   - Export uses `transformGcode()` (offset + rotation, including I/J rotation).

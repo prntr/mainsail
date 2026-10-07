@@ -164,6 +164,11 @@ export const getDefaultState = (): GuiState => {
             showNeedlePosition: true,
             showFrameBorder: true,
             showTransformedGcode: false,
+            // Declared so Vue tracks them: on a fresh database the first move of
+            // a design was invisible to Studio until a reload.
+            designOffsetX: 0,
+            designOffsetY: 0,
+            moveMode: false,
             rotationDeg: 0,
             rotationPivot: 'design',
             backgroundColor: defaultGcodeStudioPalette.backgroundColor,

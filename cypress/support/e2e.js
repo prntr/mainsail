@@ -18,3 +18,21 @@ import './commands'
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
+
+// Mainsail's PWA service worker answers page loads from its cache. Cypress
+// cannot instrument such a page, so onBeforeLoad never runs and tests that
+// stub the page's WebSocket connect to nothing. Tests run without it: drop
+// what an earlier run registered on this origin, and register none.
+before(() => {
+    const serviceWorker = window.navigator.serviceWorker
+    if (!serviceWorker) return
+    cy.wrap(
+        serviceWorker
+            .getRegistrations()
+            .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+    )
+})
+
+Cypress.on('window:before:load', (win) => {
+    delete Object.getPrototypeOf(win.navigator).serviceWorker
+})
