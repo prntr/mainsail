@@ -609,6 +609,12 @@ import paper from 'paper'
 import gcodeToGeometryUrl from '@/lib/gcode2dviewer/gcodetogeometry.min.js?url'
 import { FileStateGcodefile } from '@/store/files/types'
 import { unhomedStartAxes } from '@/store/stitchlabIntake/helpers'
+import {
+    GCodeGeometryLine,
+    GCodeGeometryPoint,
+    parseEmbroideryGcode,
+    RenderLine,
+} from '@/lib/embroideryPreview/parseEmbroideryGcode'
 import { needleIcon } from '@/components/icons/needleIcon'
 import {
     mdiCameraRetake,
@@ -670,49 +676,7 @@ interface FrameGeometry {
     stitch_area: FrameGeometryPoint[][]
 }
 
-interface GCodeGeometryPoint {
-    x: number
-    y: number
-    z?: number
-}
-
-interface GCodeGeometryBezier {
-    p0: GCodeGeometryPoint
-    p1: GCodeGeometryPoint
-    p2: GCodeGeometryPoint
-    p3: GCodeGeometryPoint
-}
-
-interface GCodeGeometryLine {
-    type: string
-    start: GCodeGeometryPoint
-    end: GCodeGeometryPoint
-    beziers?: GCodeGeometryBezier[]
-}
-
-interface GCodeGeometry {
-    lines: GCodeGeometryLine[]
-    size: {
-        min: GCodeGeometryPoint
-        max: GCodeGeometryPoint
-    }
-}
-
-interface GCodeGeometryResult extends GCodeGeometry {
-    displayInInch?: boolean
-}
-
-interface GCodeToGeometryApi {
-    parse: (gcode: string) => GCodeGeometry
-}
-
 const stitchlabStandardFrameGeometry = stitchlabStandardFrameGeometryAsset as unknown as FrameGeometry
-
-interface RenderLine {
-    line: GCodeGeometryLine
-    color: string
-    moveIndex: number
-}
 
 interface RenderItem {
     item: paper.PathItem
@@ -728,12 +692,6 @@ interface downloadSnackbar {
     speed: number
     total: number
     cancelTokenSource: any
-}
-
-declare global {
-    interface Window {
-        GCodeToGeometry?: GCodeToGeometryApi
-    }
 }
 
 @Component({
@@ -774,7 +732,6 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
     designHeight = 0
     hasColorChanges = false
     designCenter: GCodeGeometryPoint = { x: 0, y: 0 }
-    defaultFeedrate = 1200
     treatG0AsStitch = false
     stitchPointMoveIndices: number[] = []
     playbackPosition: GCodeGeometryPoint | null = null
@@ -2068,7 +2025,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         this.scrubFileSize = gcode.length
         this.scrubPosition = Math.min(this.scrubPosition, this.scrubFileSize)
 
-        const parsed = this.parseGcode(gcode)
+        const parsed = parseEmbroideryGcode(gcode, this.stitchColor)
         if (!parsed) {
             this.renderLines = []
             this.renderItems = []
@@ -2571,7 +2528,7 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
             return
         }
 
-        const parsed = this.parseGcode(gcode)
+        const parsed = parseEmbroideryGcode(gcode, this.stitchColor)
         if (!parsed) {
             this.renderLines = []
             this.renderItems = []
@@ -2612,208 +2569,11 @@ export default class GCodeStudio2D extends Mixins(BaseMixin) {
         this.paperScope.view.update()
     }
 
-    parseGcode(gcode: string): {
-        renderLines: RenderLine[]
-        moveOffsets: number[]
-        colorChangeIndices: number[]
-        stitchCount: number
-        jumpCount: number
-        designWidth: number
-        designHeight: number
-        hasColorChanges: boolean
-        designCenter: GCodeGeometryPoint
-        treatG0AsStitch: boolean
-        stitchPointMoveIndices: number[]
-        hasZStitchMarkers: boolean
-    } | null {
-        if (!window.GCodeToGeometry) {
-            window.console.error('GCodeToGeometry not available')
-            return null
-        }
-
-        const rawGcode = this.normalizeLineEndings(gcode)
-        const normalizedGcode = this.normalizeGcode(rawGcode)
-        const rawLines = rawGcode.split('\n')
-        const lines = normalizedGcode.split('\n')
-        const headerMatch = rawGcode.match(/\(STITCH_COUNT:(\d+)\)/i)
-        const headerStitchCount = headerMatch ? parseInt(headerMatch[1]) : null
-        let stitchCountFromMoves = 0
-        let jumpCount = 0
-
-        const processedLines: string[] = []
-        const moveOffsets: number[] = []
-        const moveColors: string[] = []
-        const colorChangeIndices: number[] = []
-        let currentColor = this.stitchColor
-        let offset = 0
-        const feedratePattern = /\bF[-+]?\d*\.?\d+/i
-        let g0Count = 0
-        let g1Count = 0
-        const stitchPointMoveIndices: number[] = []
-        let hasZStitchMarkers = false
-
-        lines.forEach((line, index) => {
-            const rawLine = rawLines[index] ?? line
-            offset += rawLine.length + 1
-            const trimmed = line.trim()
-            const rawTrimmed = rawLine.trim()
-
-            const colorMatch = rawTrimmed.match(/;\s*color\s+r:(\d+)\s+g:(\d+)\s+b:(\d+)/i)
-            if (colorMatch) {
-                const r = parseInt(colorMatch[1])
-                const g = parseInt(colorMatch[2])
-                const b = parseInt(colorMatch[3])
-                currentColor = `#${r.toString(16).padStart(2, '0')}${g
-                    .toString(16)
-                    .padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
-                colorChangeIndices.push(moveColors.length)
-                return
-            }
-
-            if (!trimmed || trimmed.startsWith(';') || trimmed.startsWith('(')) {
-                return
-            }
-
-            const moveMatch = trimmed.match(/G0*([0-3])(?=[^0-9]|$)/i)
-            const hasXY = /[XY]/i.test(trimmed)
-            const hasZ = /\bZ[\d.-]+/i.test(trimmed)
-            const isZOnly = !!(moveMatch && hasZ && !hasXY)
-
-            if (isZOnly) {
-                hasZStitchMarkers = true
-                if (headerStitchCount === null) {
-                    stitchCountFromMoves += 1
-                }
-                if (moveColors.length > 0) {
-                    stitchPointMoveIndices.push(moveColors.length - 1)
-                }
-                return
-            }
-
-            if (moveMatch && hasXY) {
-                const code = moveMatch[1]
-                moveOffsets.push(offset)
-                if (code === '0') {
-                    jumpCount += 1
-                    g0Count += 1
-                } else if (headerStitchCount === null) {
-                    stitchCountFromMoves += 1
-                    g1Count += 1
-                }
-                moveColors.push(currentColor)
-                let processedLine = hasZ ? line.replace(/\s+Z[\d.-]+/gi, '') : line
-                if (code === '1' && !feedratePattern.test(processedLine)) {
-                    processedLine = this.appendFeedrate(processedLine, this.defaultFeedrate)
-                }
-                processedLines.push(processedLine)
-                if (hasZ) {
-                    hasZStitchMarkers = true
-                    stitchPointMoveIndices.push(moveColors.length - 1)
-                }
-                return
-            }
-
-            processedLines.push(line)
-        })
-
-        const processedGcode = processedLines.filter((line) => line !== '').join('\n')
-        let geometry: GCodeGeometryResult
-        try {
-            geometry = window.GCodeToGeometry.parse(processedGcode)
-        } catch (error) {
-            window.console.error('Failed to parse G-code', error)
-            return null
-        }
-
-        if (!geometry || !geometry.lines.length) {
-            return null
-        }
-
-        if (geometry.lines.length !== moveColors.length) {
-            window.console.warn('G-code parse mismatch: move count does not match geometry output')
-        }
-
-        const unitScale = geometry.displayInInch === false ? 25.4 : 1
-        const scalePoint = (point: GCodeGeometryPoint): GCodeGeometryPoint => ({
-            x: point.x * unitScale,
-            y: point.y * unitScale,
-            z: point.z !== undefined ? point.z * unitScale : undefined,
-        })
-
-        const scaledLines = geometry.lines.map((line) => ({
-            type: line.type,
-            start: scalePoint(line.start),
-            end: scalePoint(line.end),
-            beziers: line.beziers
-                ? line.beziers.map((bezier) => ({
-                      p0: scalePoint(bezier.p0),
-                      p1: scalePoint(bezier.p1),
-                      p2: scalePoint(bezier.p2),
-                      p3: scalePoint(bezier.p3),
-                  }))
-                : undefined,
-        }))
-
-        const renderLines: RenderLine[] = scaledLines.map((line, index) => ({
-            line,
-            color: moveColors[index] ?? this.stitchColor,
-            moveIndex: index,
-        }))
-
-        const size = {
-            min: scalePoint(geometry.size.min),
-            max: scalePoint(geometry.size.max),
-        }
-        const designWidth = Math.abs(size.max.x - size.min.x)
-        const designHeight = Math.abs(size.max.y - size.min.y)
-        const designCenter = {
-            x: (size.max.x + size.min.x) / 2,
-            y: (size.max.y + size.min.y) / 2,
-        }
-        const treatG0AsStitch = g1Count === 0 && g0Count > 0
-        const normalizedJumpCount = treatG0AsStitch ? 0 : jumpCount
-        const stitchCount = headerStitchCount ?? (treatG0AsStitch ? g0Count : stitchCountFromMoves)
-
-        return {
-            renderLines,
-            moveOffsets,
-            colorChangeIndices,
-            stitchCount,
-            jumpCount: normalizedJumpCount,
-            designWidth,
-            designHeight,
-            hasColorChanges: colorChangeIndices.length > 0,
-            designCenter,
-            treatG0AsStitch,
-            stitchPointMoveIndices,
-            hasZStitchMarkers,
-        }
-    }
-
     normalizeLineEndings(gcode: string): string {
         return gcode
             .replace(/\r\n/g, '\n')
             .replace(/\r/g, '\n')
             .replace(/\uFEFF/g, '')
-    }
-
-    normalizeGcode(gcode: string): string {
-        return gcode.replace(/(-?\d+),(\d+)/g, '$1.$2')
-    }
-
-    appendFeedrate(line: string, feedrate: number): string {
-        const semicolonIndex = line.indexOf(';')
-        const parenIndex = line.indexOf('(')
-        let insertIndex = -1
-
-        if (semicolonIndex >= 0) insertIndex = semicolonIndex
-        if (parenIndex >= 0) insertIndex = insertIndex === -1 ? parenIndex : Math.min(insertIndex, parenIndex)
-
-        if (insertIndex === -1) return `${line} F${feedrate}`
-
-        const head = line.slice(0, insertIndex).trimEnd()
-        const tail = line.slice(insertIndex)
-        return `${head} F${feedrate} ${tail}`
     }
 
     buildPathItems(): void {
