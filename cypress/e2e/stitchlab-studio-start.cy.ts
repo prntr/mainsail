@@ -48,6 +48,8 @@ function visitStudio(options: { printState?: string; filename?: string; intake?:
         },
     })
     cy.get('.gcode-studio-panel', { timeout: 20000 }).should('be.visible')
+    // Settings typed before Mainsail has read its database would be replaced.
+    cy.wrap(null).should(() => expect(fake?.requests.map((r) => r.method)).to.include('server.temperature_store'))
     return cy.then(() => fake as FakeMoonraker)
 }
 
@@ -91,7 +93,8 @@ describe('G-Code Studio: start an unmoved design', () => {
         visitStudio()
         loadLocalDesign()
         startAsIs().should('exist')
-        cy.contains('.v-text-field', 'Offset X').find('input').type('{selectall}5')
+        cy.contains('.v-text-field', 'Offset X').find('input').clear().type('5').should('have.value', '5')
+        cy.contains('button', 'Reset Offsets').should('not.be.disabled')
         startAsIs().should('not.exist')
         cy.contains('button', 'Save & Start').should('not.be.disabled')
     })
